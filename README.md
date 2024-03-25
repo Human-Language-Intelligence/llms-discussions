@@ -1,3 +1,6 @@
 # llms-discussions
 
-flask run --debug
+실행 flask run --debug
+
+- Live interrupt (OFF)
+- Design (수정 예정)

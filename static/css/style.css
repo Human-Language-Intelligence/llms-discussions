@@ -1,0 +1,153 @@
+body {
+  display: flex;
+  font-family: 'Arial', sans-serif;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+}
+.message-box {
+  border-radius: 8px;
+  background-color: #ffffff;/*#f7f7f7;*/
+  display: flex;
+  flex-direction: column;
+  width: 80vw;
+  max-width: 600px;
+  overflow-y: auto;
+  padding: 20px;
+  height: 80vh;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+}
+
+.messages {
+  overflow-y: auto;
+  max-height: 70vh; 
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 5px;
+  /* align-items: flex-end;  */
+}
+
+.name {
+  font-weight: bold;
+  align-self: flex-start; 
+}
+
+.bubble {
+  border-radius: 12px;
+  padding: 12px;
+  max-width: 70%;
+  word-wrap: break-word;
+  position: relative;
+  overflow: hidden;
+}
+
+.message.user1 .bubble {
+  align-self: flex-end;
+  background-color: #007bff;
+  color: white;
+}
+
+.message.user2 .bubble {
+  align-self: flex-start;
+  background-color: #e5e5ea;/*#28a40f;*/
+  color: black;
+}
+
+.chatgpt-response .bubble {
+  align-self: flex-start;
+  background-color: #e5e5ea;/*#28a40f;*/
+  color: black;
+}
+
+.gemini-response .bubble {
+  align-self: flex-end;
+  background-color: #007bff;
+  color: white;
+}
+
+.message.admin .bubble {
+  background-color: rgb(3, 3, 108); /* Blue */
+  align-self: center;
+  color: white; 
+  text-align: center;
+  border-radius: 7px;
+  padding: 10px;
+}
+
+.typing-message.user1 .bubble {
+  align-self: flex-end;
+  background-color: rgb(221, 221, 221);
+  color: white;
+}
+
+.typing-message.user2 .bubble {
+  align-self: flex-start;
+  background-color: rgb(221, 221, 221);
+  color: rgb(255, 255, 255);
+}
+
+.timestamp {
+  font-size: 0.8em;
+  color: #888;
+  margin-top: 8px;
+  font-style: italic;
+  /* align-self: flex-end; */
+}
+
+.message.user1 .timestamp {
+  align-self: flex-end;
+}
+
+.message.user2 .timestamp {
+  align-self: flex-start;
+}
+
+.inputs {
+  display: flex;
+  margin-top: 16px;
+}
+
+#message {
+  flex: 2; 
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  padding: 12px; 
+  font-size: 16px;
+}
+
+#send-btn {
+  margin-left: 8px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  padding: 12px 20px; 
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#live-btn {
+  margin-left: 8px;
+  border: 2px solid #007bff;
+  background-color: rgb(255, 255, 255);
+  color: rgb(0, 0, 0);
+  padding: 12px 20px; 
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.notification {
+  text-align: center;
+  color: gray;
+}
+
+.logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%; 
+}

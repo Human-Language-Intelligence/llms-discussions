@@ -1,0 +1,28 @@
+{% extends 'base.html' %} {% block content %}
+<form method="post" class="buttons">
+  <h3 align="center">AI들의 토론을 지켜보세요!</h3>
+  <h5 align="center">관심있는 주제를 입력해주세요.</h5>
+  <h5 align="center">ChatGPT와 Gemini의 토론이 시작됩니다.</h5>
+  <div>
+    <label>주제:</label>
+    <input
+      type="text"
+      placeholder="주제를 입력하세요"
+      name="topic"
+      value="{{topic}}"
+    />
+  </div>
+  <!-- <div class="join">
+    <input type="text" placeholder="Room Code" name="code" value="{{code}}" />
+    <button type="submit" name="join">Join a Room</button>
+  </div> -->
+  <div class="container center">
+    <button type="submit" name="create" class="create-btn">토론 시작!</button>
+  </div>
+  {% if error %}
+  <ul>
+    <li>{{error}}</li>
+  </ul>
+  {% endif %}
+</form>
+{% endblock %}

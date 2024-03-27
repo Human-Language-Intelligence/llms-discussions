@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="message-box ">
-  <h2>Topic: {{topic}}</h2>
+  <h2>토론 주제: {{topic}}</h2>
   <div class="messages scrollbar" id="messages">
     {% for msg in messages %}
       <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
@@ -262,8 +262,17 @@ function simulateTypingRemoval(element) {
     }
 };
 
-  const scrollDown = () => {
+  /*const scrollDown = () => {
     messages.scrollTop = messages.scrollHeight;
+  };*/
+  const scrollDown = () => {
+    // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
+    const threshold = 100; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
+    const positionFromBottom = messages.scrollHeight - (messages.scrollTop + messages.clientHeight);
+ 
+    if (positionFromBottom < threshold) {
+      messages.scrollTop = messages.scrollHeight;
+    }
   };
 
   const messageInput = document.getElementById("message");

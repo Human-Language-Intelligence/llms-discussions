@@ -227,3 +227,24 @@ body {
     display:none
   }  
 }
+.home-button-container {
+  position: fixed;
+  bottom: 20px;
+  right: 390px;
+  z-index: 1000; /* 확실히 버튼이 다른 요소들 위에 오도록 함 */
+}
+
+.home-button {
+  display: inline-block;
+  background-color: #007bff; /* 버튼 배경 색 */
+  color: white; /* 텍스트 색 */
+  padding: 10px 15px;
+  text-decoration: none; /* 밑줄 제거 */
+  border-radius: 5px; /* 모서리를 둥글게 */
+  font-weight: bold; /* 글자 굵게 */
+  transition: background-color 0.3s; /* 배경 색 변경 애니메이션 */
+}
+
+.home-button:hover {
+  background-color: #2980b9; /* 마우스 오버 시 배경 색 변경 */
+}

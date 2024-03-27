@@ -26,12 +26,6 @@ GOOGLE_API_KEY = "" # anonymoize for submission
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
-"""gemini_generation_config = {
-  "temperature": 0.9,
-  "top_p": 1,
-  "top_k": 1,
-  "max_output_tokens": 2048,
-}"""
 gemini_safety_settings = [
   {
     "category": "HARM_CATEGORY_HARASSMENT",
@@ -51,7 +45,6 @@ gemini_safety_settings = [
   },
 ]
 gemini_client = genai.GenerativeModel(model_name="gemini-pro",
-                              #generation_config=gemini_generation_config,
                               safety_settings=gemini_safety_settings)
 
 rooms = {}
@@ -59,7 +52,6 @@ rooms = {}
 work_queue = queue.Queue()
 gemini_work_queue = queue.Queue()
 gpt_lock = threading.Lock()
-gemini_lock = threading.Lock()
 
 def worker():
     while True:
@@ -80,7 +72,7 @@ def gemini_worker():
             break
         content = send_gemini_response(gemini_response, room)
         gemini_work_queue.task_done()
-        GPTmessage(content, room)#gemini_response)###e
+        GPTmessage(content, room)
 
 gemini_worker_thread = threading.Thread(target=gemini_worker, daemon=True)
 gemini_worker_thread.start()
@@ -102,22 +94,10 @@ def home():
     session.clear()
     if request.method == "POST":
         topic = request.form.get("topic")
-        #code = request.form.get("code")
-        #join = request.form.get("join", False)
-        create = request.form.get("create", False)
-
-        #if not name:
-        #    return render_template("home.html", error="Please enter a name.", code=code, name=name)
-
-        #if join != False and not code:
-        #    return render_template("home.html", error="Please enter a room code.", code=code, name=name)
-        
-        #room = code
-        #if create != False:
+        if not topic:
+            return render_template("home.html", error="Please enter a topic.")
         room = generate_unique_code(2)
         rooms[room] = {"members": 0, "messages": []}
-        #elif code not in rooms:
-        #    return render_template("home.html", error="Room does not exist.", code=code, name=name)
         
         session["room"] = room
         session["topic"] = topic
@@ -135,18 +115,16 @@ def room():
 
     return render_template("room.html", code=room, topic=topic, messages=rooms[room]["messages"])
 
-#conversation = client.start_chat(history=[])
-conversation = [{"role": "system", "content":"You will take a position in favor of the given topic and proceed with the debate."}]# "You are a debater with opposing views."}]
+conversation = [{"role": "system", "content":"You will take a position in favor of the given topic and proceed with the debate. Your response should not exceed 5 lines."}]# "You are a debater with opposing views."}]
 gemini_conversation = [{
         "role": "user",
-        "parts": [{ "text": "System prompt: You will take a position against the given topic and proceed with the debate."}],
+        "parts": [{ "text": "System prompt: You will take a position against the given topic and proceed with the debate. Your response should not exceed 5 lines."}],
       },
       {
         "role": "model",
         "parts": [{ "text": "Understood."}],
-      },]#[{"role": "system", "parts":["You are a debater with opposing views."]}]# "You are a debater with opposing views."}]
+      },]#[{"role": "system", "parts":["You are a debater with opposing views."]}]
 gemini_chat = gemini_client.start_chat(history=gemini_conversation)
-# ChatGPT API 호출 함수 수정
 
 def get_chatgpt_response():
     chat_completion = client.chat.completions.create(
@@ -156,8 +134,7 @@ def get_chatgpt_response():
     return chat_completion.choices[0].message.content
 
 def get_gemini_response(user_input):
-    chat_completion = gemini_chat.send_message(user_input) # FIX: 해당 메시지 부분으로만 고치기 
-    # return to_markdown(chat_completion.text)
+    chat_completion = gemini_chat.send_message(user_input)
     return chat_completion.text
 
 @socketio.on("message")
@@ -206,7 +183,6 @@ def send_gpt_response(chatgpt_response, room):
                 content["message"] = content["message"] + "..." 
                 socketio.emit("gpt-message", content, room=room)
                 log_event("Send", "ChatGPT", content["message"])    
-                #Geminimessage(content,room)###e
                 return 
             socketio.emit("clear-gpt-response", room=room) 
             time.sleep(1)
@@ -221,7 +197,6 @@ def send_gpt_response(chatgpt_response, room):
 
         socketio.emit("gpt-message", content, room=room)
         
-        #Geminimessage(content)###e
         time.sleep(get_random_time())
         if content["is_typing"] == False: 
             conversation.append({"role": "assistant","content": chatgpt_response[:i+1]})
@@ -229,10 +204,10 @@ def send_gpt_response(chatgpt_response, room):
         elif content["is_typing"] == True:
             log_event("Keystroke", "ChatGPT", content["message"])
      
-    #Interrupt   
-    #if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정 
-    #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
-    #        Geminimessage(content, room)
+        #Interrupt   
+        #if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정 
+        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
+        #        Geminimessage(content, room)
 
     return content
     
@@ -253,7 +228,6 @@ def send_gemini_response(gemini_response, room):
                 content["message"] = content["message"] + "..." 
                 socketio.emit("gemini-message", content, room=room)
                 log_event("Send", "Gemini", content["message"])
-                #GPTmessage(content, room)###e
                 return 
             socketio.emit("clear-gemini-response", room=room) 
             time.sleep(1)
@@ -267,7 +241,6 @@ def send_gemini_response(gemini_response, room):
             gemini_response_in_progress[room] = False
 
         socketio.emit("gemini-message", content, room=room)
-        #GPTmessage(content)###e
         time.sleep(get_random_time())
         if content["is_typing"] == False: 
             gemini_conversation.append({"role": "assistant","content": gemini_response[:i+1]})
@@ -279,18 +252,10 @@ def send_gemini_response(gemini_response, room):
         #if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정 
         #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
         #        GPTmessage(content, room)
-
     return content
-        # if content["is_typing"] == False: 
-        #     conversation.append({"role": "assistant", "content": chatgpt_response[:i+1]}) #FIX 
-        #     log_event("Send", "chatGPT", content["message"])
-        # elif content["is_typing"] == True:
-        #     log_event("Keystroke", "chatGPT", content["message"])
+
 @socketio.on("gpt-message")
 def GPTmessage(data, room):
-    #room = session.get("room")
-    #if room not in rooms:
-    #    return 
     if data == None:
         return
     if data["name"] == "admin":
@@ -303,7 +268,6 @@ def GPTmessage(data, room):
             #get_chatgpt_response(recent_user_typing)
 
         if data["is_typing"] == True:
-            #Gemini_handle_typing(data)
             if gpt_response_in_progress.get(room, False): # room이라는 키가 존재하면 value값 반환, 없으면 False 반환 
                 if gemini_response_in_progress.get(room, False): # room이라는 키가 존재하면 value값 반환, 없으면 False 반환
                     if fuzz.ratio(gemini_response_in_progress[room], recent_user_typing) < 60: # 유저가 타이핑 중에 20퍼센트 이상 다른 문장을 치면 다른 문장으로 응답 생성  
@@ -339,23 +303,14 @@ def GPTmessage(data, room):
 
 @socketio.on("gemini-message")
 def Geminimessage(data, room):
-    #room = session.get("room")
-    #if room not in rooms:
-    #    return 
-    
     if data == None:
         return
     if data["name"] == "admin":
         return
     recent_user_typing = data["message"]
     
-    with gpt_lock:#gemini_lock:
-        #if data["is_typing"] == False:
-            #gemini_conversation.append({"role": "user", "content": recent_user_typing})
-            #get_gemini_response(recent_user_typing)
-
+    with gpt_lock:
         if data["is_typing"] == True:
-            #GPT_handle_typing(data)
             if gemini_response_in_progress.get(room, False): # room이라는 키가 존재하면 value값 반환, 없으면 False 반환 
                 if gpt_response_in_progress.get(room, False): # room이라는 키가 존재하면 value값 반환, 없으면 False 반환
                     if fuzz.ratio(gpt_response_in_progress[room], recent_user_typing) < 60: # 유저가 타이핑 중에 20퍼센트 이상 다른 문장을 치면 다른 문장으로 응답 생성  
@@ -436,9 +391,8 @@ def handle_live_toggle(data):
 @socketio.on("connect")
 def connect(auth):
     room = session.get("room")
-    #name = session.get("name")
     topic = session.get("topic")
-    if not room or not topic:#name:
+    if not room or not topic:
         return
     if room not in rooms:
         leave_room(room)
@@ -465,7 +419,7 @@ def sendTopic(json):
         
         content = {
             "name": "user",#session.get("name"),
-            "message": topic,
+            "message": "토론 주제는 "+topic+" 입니다.",
             "timestamp": datetime.utcnow().isoformat(),  # 현재 시간을 UTC로 저장
             "is_typing": False  
         }

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="message-box ">
-  <h2>Topic:{{topic}}</h2>
+  <h2>Topic: {{topic}}</h2>
   <div class="messages scrollbar" id="messages">
     {% for msg in messages %}
       <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">

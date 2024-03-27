@@ -53,8 +53,11 @@ work_queue = queue.Queue()
 gemini_work_queue = queue.Queue()
 gpt_lock = threading.Lock()
 
+auto_stop = 0
+
 def worker():
-    while True:
+    global auto_stop
+    while auto_stop < 10:
         chatgpt_response, room = work_queue.get()
         if chatgpt_response is None:
             break
@@ -66,7 +69,8 @@ worker_thread = threading.Thread(target=worker, daemon=True)
 worker_thread.start()
 
 def gemini_worker():
-    while True:
+    global auto_stop
+    while auto_stop < 10:
         gemini_response, room = gemini_work_queue.get()
         if gemini_response is None:
             break
@@ -96,6 +100,7 @@ def home():
         topic = request.form.get("topic")
         if not topic:
             return render_template("home.html", error="Please enter a topic.")
+
         room = generate_unique_code(2)
         rooms[room] = {"members": 0, "messages": []}
         
@@ -110,15 +115,15 @@ def room():
     room = session.get("room")
     topic = session.get("topic")
     
-    if room is None or session.get("topic") is None or room not in rooms:
+    if room is None or topic is None or room not in rooms:
         return redirect(url_for("home"))
-
+    
     return render_template("room.html", code=room, topic=topic, messages=rooms[room]["messages"])
 
-conversation = [{"role": "system", "content":"You will take a position in favor of the given topic and proceed with the debate. Your response should not exceed 5 lines."}]# "You are a debater with opposing views."}]
+conversation = [{"role": "system", "content":"You will take a position in favor of the given topic and proceed with the debate in Korean. Your response should not exceed 5 lines."}]# "You are a debater with opposing views."}]
 gemini_conversation = [{
         "role": "user",
-        "parts": [{ "text": "System prompt: You will take a position against the given topic and proceed with the debate. Your response should not exceed 5 lines."}],
+        "parts": [{ "text": "System prompt: You will take a position against the given topic and proceed with the debate in Korean. Your response should not exceed 5 lines."}],
       },
       {
         "role": "model",
@@ -144,7 +149,7 @@ def message(data):
         return 
     
     content = {
-        "name": "user",#session.get("name"),
+        "name": "User",#session.get("name"),
         "message": data["data"],
         "timestamp": datetime.utcnow().isoformat(),  # 현재 시간을 UTC로 저장
         "is_typing": False  
@@ -159,7 +164,7 @@ def message(data):
 
     socketio.emit("message", content, room=room)
     # 키스트로크를 로그에 기록
-    log_event("Send", "user", content["message"])#session.get("name")
+    log_event("Send", "User", content["message"])#session.get("name")
     GPTmessage(content, room)
 
 # gpt 응답 생성 여부 추적 
@@ -182,7 +187,7 @@ def send_gpt_response(chatgpt_response, room):
                 content["is_typing"] = False
                 content["message"] = content["message"] + "..." 
                 socketio.emit("gpt-message", content, room=room)
-                log_event("Send", "ChatGPT", content["message"])    
+                log_event("Send", "ChatGPT", content["message"])
                 return 
             socketio.emit("clear-gpt-response", room=room) 
             time.sleep(1)
@@ -260,12 +265,13 @@ def GPTmessage(data, room):
         return
     if data["name"] == "admin":
         return
+    global auto_stop
+    auto_stop += 1
     recent_user_typing = data["message"]
     
     with gpt_lock:
         if data["is_typing"] == False:
             conversation.append({"role": "user", "content": recent_user_typing})
-            #get_chatgpt_response(recent_user_typing)
 
         if data["is_typing"] == True:
             if gpt_response_in_progress.get(room, False): # room이라는 키가 존재하면 value값 반환, 없으면 False 반환 
@@ -307,6 +313,8 @@ def Geminimessage(data, room):
         return
     if data["name"] == "admin":
         return
+    global auto_stop
+    auto_stop += 1
     recent_user_typing = data["message"]
     
     with gpt_lock:
@@ -346,7 +354,7 @@ def get_random_time():
     # 베타 분포에서 랜덤한 값을 얻음
     value = random.betavariate(1, 3)
     # 값을 0.01과 0.7 사이의 범위로 스케일링
-    return 0.01 + value * (0.3 - 0.01)
+    return 0.01 + value * (0.35 - 0.01)
 
 @socketio.on("typing")
 def handle_typing(data):
@@ -355,7 +363,7 @@ def handle_typing(data):
         return
 
     content = {
-        "name": "user",#session.get("name"),
+        "name": "User",#session.get("name"),
         "message": data["message"],
         "is_typing": True
     }
@@ -364,7 +372,7 @@ def handle_typing(data):
 
     # 키스트로크를 로그에 기록
     if data["message"].strip() != "":
-        log_event("Keystroke", "user", data["message"])#session.get("name")
+        log_event("Keystroke", "User", data["message"])#session.get("name")
     
     if len(content['message']) > 70: ############# 쌍방채팅 여기서 조정 
         if random.randint(0, 1) == 1:
@@ -376,17 +384,17 @@ def handle_live_toggle(data):
     if room not in rooms:
         return
     
-    name = "user"#session.get("name")
+    name = "User"#session.get("name")
 
     content = {
-        "name": "user",#session.get("name"),
+        "name": "User",#session.get("name"),
         "message": f"{name} has gone {data['status']}",
         "timestamp": datetime.utcnow().isoformat(),
     }
 
     socketio.emit("notification", content, room=room)
 
-    log_event("toggle", "user", data["status"]) #session.get("name"),
+    log_event("toggle", "User", data["status"]) #session.get("name"),
 
 @socketio.on("connect")
 def connect(auth):
@@ -399,7 +407,7 @@ def connect(auth):
         return
     
     join_room(room)
-    name = "user"#session.get("name")
+    name = "User"#session.get("name")
     content = {
         "name": name,
         "message": f"{name} has entered the room",
@@ -418,7 +426,7 @@ def sendTopic(json):
             return 
         
         content = {
-            "name": "user",#session.get("name"),
+            "name": "User",
             "message": "토론 주제는 "+topic+" 입니다.",
             "timestamp": datetime.utcnow().isoformat(),  # 현재 시간을 UTC로 저장
             "is_typing": False  
@@ -431,13 +439,13 @@ def sendTopic(json):
             content["is_typing"] = False
             rooms[room]["messages"].append(content)
 
-        log_event("Send", "user", content["message"])#session.get("name")
+        log_event("Send", "User", content["message"])#session.get("name")
         GPTmessage(content, room)
         
 @socketio.on("disconnect")
 def disconnect():
     room = session.get("room")
-    name = "user"##session.get("name")
+    name = "User"##session.get("name")
     leave_room(room)
 
     if room in rooms:

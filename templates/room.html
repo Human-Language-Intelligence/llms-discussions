@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="message-box">
+<div class="message-box ">
   <h2>Topic:{{topic}}</h2>
-  <div class="messages" id="messages">
+  <div class="messages scrollbar" id="messages">
     {% for msg in messages %}
       <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
         <div class="bubble">
@@ -26,12 +26,12 @@
   const messages = document.getElementById("messages");
   const user1Name = "Gemini"//"{{ session['name'] }}";
   const user2Name = "The Other User";  // TODO 
-  socketio.on("connect", function() {//window.onload = function() {
+  socketio.on("connect", function() {
     var userTopic = "{{ topic }}"
     socketio.emit('sendTopic', {topic: userTopic});
   });
   var isLive = true; // default to live
-  function toggleButtonText() {
+  /*function toggleButtonText() {
     var button = document.getElementById('live-btn');
     if (button.innerHTML === 'Live') {
         button.innerHTML = 'UnLive';
@@ -46,7 +46,7 @@
         isLive = true;
         socketio.emit('live-toggle', { status: 'Live' });
     }
-  } 
+  } */
 
   const createMessage = (name, msg) => {
   const isAdmin = name === 'admin'; 
@@ -66,8 +66,10 @@
     content = `
     <div class="message ${userClass}">
       <div class="bubble">
-        <img src="./static/user.png" alt="user" class="logo">
-        <span class="name">${name}</span>
+        <div class="profile">
+          <img src="./static/user.png" alt="user" class="logo">
+          <span class="name">${name}</span>
+        </div>
         <p>${msg}</p>
       </div>
       <span class="timestamp">${new Date().toLocaleString()}</span>
@@ -85,8 +87,10 @@
   content += `
   <div class="message chatgpt-response">
       <div class="bubble">
-          <img src="./static/ChatGPT.png" alt="ChatGPT" class="logo">
-          <span class="name">ChatGPT</span>
+          <div class="profile">
+            <img src="./static/ChatGPT.png" alt="ChatGPT" class="logo">
+            <span class="name">ChatGPT</span>
+          </div>  
           <p>${formattedResponse}</p>
       </div>
       <span class="timestamp">${new Date().toLocaleString()}</span>
@@ -103,11 +107,13 @@
     content += `
     <div class="message gemini-response">
         <div class="bubble">        
-            <img src="./static/Gemini.png" alt="Gemini" class="logo">
-            <span class="name">Gemini</span>
+            <div class="profile">        
+              <img src="./static/Gemini.png" alt="Gemini" class="logo">
+              <span class="name">Gemini</span>
+            </div>
             <p>${formattedResponse}</p>
         </div>
-        <span class="timestamp">${new Date().toLocaleString()}</span>
+        <span class="timestamp gemini">${new Date().toLocaleString()}</span>
     </div>
     `;
     messages.innerHTML += content;
@@ -131,8 +137,10 @@
   const typingContent = `
     <div class="message typing-message ${userClass} ${name}-typing-message">
       <div class="bubble" style="align-self: ${textAlignStyle};">
-        <img src="./static/${name}.png" class="logo">
-        <span class="name">${name}</span>
+        <div class="profile">
+          <img src="./static/${name}.png" class="logo">
+          <span class="name">${name}</span>
+        </div>
         <p>${formattedtyping}</p>
       </div>
       <span class="timestamp"> ${name} is typing ... </span>

@@ -119,10 +119,10 @@ def room():
     
     return render_template("room.html", code=room, topic=topic, messages=rooms[room]["messages"])
 
-conversation = [{"role": "system", "content":"You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 5 lines."}]# "You are a debater with opposing views."}]
+conversation = [{"role": "system", "content":"You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."}]# "You are a debater with opposing views."}]
 gemini_conversation = [{
         "role": "user",
-        "parts": [{ "text": "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 5 lines."}],
+        "parts": [{ "text": "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."}],
       },
       {
         "role": "model",

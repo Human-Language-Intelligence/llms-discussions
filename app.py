@@ -16,7 +16,6 @@ app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
 import pathlib 
-from helper import to_markdown
 import google.generativeai as genai
 
 client = OpenAI(

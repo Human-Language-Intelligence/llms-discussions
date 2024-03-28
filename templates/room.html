@@ -1,28 +1,30 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="message-box ">
-  <h2>토론 주제: {{topic}}</h2>
-  <div class="messages scrollbar" id="messages">
-    {% for msg in messages %}
-      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
-        <div class="bubble">
-          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
-          <p>{{ msg.message }}</p>
+  <div>
+    <h2>토론 주제: {{topic}}</h2>
+    <div class="messages scrollbar" id="messages">
+      {% for msg in messages %}
+        <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
+          <div class="bubble">
+            <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
+            <p>{{ msg.message }}</p>
+          </div>
+          <span class="timestamp">{{ msg.timestamp }}</span>
         </div>
-        <span class="timestamp">{{ msg.timestamp }}</span>
-      </div>
-    {% endfor %}
+      {% endfor %}
+    </div>
+    <!--<div class="inputs">
+      <input type="text" rows="3" placeholder="Message" name="message" id="message" />
+      <button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
+      <button type="button" name="live" id="live-btn" onClick="toggleButtonText()">Live</button>
+    </div>-->
   </div>
-  <!--<div class="inputs">
-    <input type="text" rows="3" placeholder="Message" name="message" id="message" />
-    <button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
-    <button type="button" name="live" id="live-btn" onClick="toggleButtonText()">Live</button>
-  </div>-->
 </div>
-
 <div class="home-button-container">
   <a href="{{ url_for('home') }}" class="home-button">다른 주제로 토론 시작</a>
 </div>
+
 
 <script type="text/javascript">
   var socketio = io();

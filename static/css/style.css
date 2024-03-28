@@ -89,14 +89,15 @@ body {
 
 .typing-message.user1 .bubble {
   align-self: flex-end;
-  background-color: rgb(221, 221, 221);
-  color: white;
+  background-color: darkgray; /*(221, 221, 221);*/
+  color: 	white;
 }
+
 
 .typing-message.user2 .bubble {
   align-self: flex-start;
-  background-color: rgb(221, 221, 221);
-  color: rgb(255, 255, 255);
+  background-color: darkgray;/*rgb(221, 221, 221);*/
+  color: white;/*#404040rgb(255, 255, 255)*/;
 }
 
 .timestamp {
@@ -168,7 +169,7 @@ body {
 
 #input-topic {
   background-color: #f4f4f4;
-  color: #bcbcbc;
+  color: gray;/*#bcbcbc*/;
   border: none;
   font-size: 12px;
   padding: 6px 16px 6px 12px;
@@ -228,10 +229,13 @@ body {
   }  
 }
 .home-button-container {
-  position: fixed;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  /*position: fixed;
   bottom: 20px;
   right: 390px;
-  z-index: 1000; /* 확실히 버튼이 다른 요소들 위에 오도록 함 */
+  z-index: 1000;  확실히 버튼이 다른 요소들 위에 오도록 함*/
 }
 
 .home-button {
@@ -240,11 +244,16 @@ body {
   color: white; /* 텍스트 색 */
   padding: 10px 15px;
   text-decoration: none; /* 밑줄 제거 */
+  border: 2px solid #007bff;
   border-radius: 5px; /* 모서리를 둥글게 */
-  font-weight: bold; /* 글자 굵게 */
+  /*font-weight: bold;  글자 굵게 */
   transition: background-color 0.3s; /* 배경 색 변경 애니메이션 */
 }
 
 .home-button:hover {
-  background-color: #2980b9; /* 마우스 오버 시 배경 색 변경 */
+  /*background-color: #2980b9;  마우스 오버 시 배경 색 변경 */
+  
+  background-color: white; /* 버튼 배경 색 */
+  color: #007bff;
+  border: 2px solid #007bff;
 }

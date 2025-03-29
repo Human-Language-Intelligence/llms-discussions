@@ -4,31 +4,37 @@ from google.oauth2 import service_account
 from google.cloud import texttospeech
 
 with open('config.ini', 'r') as f:
-    config = configparser.ConfigParser()
-    config.read_file(f)
+    _config = configparser.ConfigParser()
+    _config.read_file(f)
 
+_credentials = service_account.Credentials.from_service_account_file(
+    filename=_config['GOOGLE']['credentials_path']
+)
 
 class TTS():
     def __init__(self) -> None:
-        _credentials = service_account.Credentials.from_service_account_file(
-            filename=config['GOOGLE']['credentials_path']
-        )
+        self.config = {
+            "language": "ko-KR",
+            "voice": texttospeech.SsmlVoiceGender.NEUTRAL,
+            "format": texttospeech.AudioEncoding.MP3
+        }
+
         self._client = texttospeech.TextToSpeechClient(
             credentials=_credentials
         )
-        self._voice = texttospeech.VoiceSelectionParams(
-            language_code="ko-KR",
-            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        self.voice = texttospeech.VoiceSelectionParams(
+            language_code=self.config['language'],
+            ssml_gender=self.config['voice']
         )
         self.audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3
+            audio_encoding=self.config['format']
         )
 
     def request(self, text):
         synthesis_input = texttospeech.SynthesisInput(text=text)
         response = self._client.synthesize_speech(
             input=synthesis_input,
-            voice=self._voice,
+            voice=self.voice,
             audio_config=self.audio_config
         )
 

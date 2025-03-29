@@ -1,51 +1,57 @@
-import pathlib
 import time
 import random
 import queue
 import threading
 import configparser
-import google.generativeai as genai
 
 from string import ascii_uppercase
-from datetime import datetime
+from datetime import datetime, timezone
 from fuzzywuzzy import fuzz
-from collections import deque
-from openai import OpenAI
 from flask import Flask, render_template, request, session, redirect, url_for, request
 from flask_socketio import join_room, leave_room, send, SocketIO
 
+from openai import OpenAI
+from google.oauth2 import service_account
+from google.cloud import aiplatform
+from vertexai.generative_models import GenerativeModel
 
-config = configparser.ConfigParser()
-config.read("config.ini")
+
+CONFIG = configparser.ConfigParser()
+CONFIG.read("config.ini")
 
 app = Flask(__name__)
-app.secret_key = config['flask']['SECRET_KEY']
+app.secret_key = CONFIG['flask']['SECRET_KEY']
 socketio = SocketIO(app)
 
-client = OpenAI(api_key=config['openai']['GPT.API_KEY'])
-genai.configure(api_key=config['google']['GEMINI.API_KEY'])
+aiplatform.init(
+    project=CONFIG['google']['GCP.PROJECT_ID'],
+    location=CONFIG['google']['GCP.LOCATION'],
+    credentials=service_account.Credentials.from_service_account_file(
+        CONFIG['google']['CREDENTIALS']
+    )
+)
 
-gemini_safety_settings = [
-    {
-        "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_NONE"
-    },
-    {
-        "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_NONE"
-    },
-    {
-        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_NONE"
-    },
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_NONE"
-    },
-]
-gemini_client = genai.GenerativeModel(
-    model_name=config["google"]['GEMINI.MODEL_NAME'],
-    safety_settings=gemini_safety_settings
+client = OpenAI(api_key=CONFIG['openai']['GPT.API_KEY'])
+gemini_client = GenerativeModel(
+    model_name=CONFIG["google"]['GEMINI.MODEL_NAME'],
+    safety_settings=[
+        {
+            "category": "HARM_CATEGORY_HARASSMENT",
+            "threshold": "BLOCK_NONE"
+        },
+        {
+            "category": "HARM_CATEGORY_HATE_SPEECH",
+            "threshold": "BLOCK_NONE"
+        },
+        {
+            "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            "threshold": "BLOCK_NONE"
+        },
+        {
+            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "threshold": "BLOCK_NONE"
+        },
+    ]
 )
 
 # "You are a debater with opposing views."}]
@@ -78,6 +84,11 @@ gemini_work_queue = queue.Queue()
 gpt_lock = threading.Lock()
 
 
+def get_timestamp_utc() -> str:
+    """현재 UTC 시간을 ISO 8601 형식으로 반환."""
+    return datetime.now(timezone.utc).isoformat()
+
+
 def get_random_time():
     # 베타 분포에서 랜덤한 값을 얻음
     value = random.betavariate(1, 3)
@@ -101,7 +112,7 @@ def log_event(event_type, username, additional_info=""):
     # 이벤트를 로그에 기록
     with open('events.log', 'a') as log_file:
         log_file.write(
-            f"{datetime.utcnow().isoformat()} - {username} - {event_type}: {additional_info}\n")
+            f"{get_timestamp_utc()} - {username} - {event_type}: {additional_info}\n")
 
 
 def worker():
@@ -137,7 +148,7 @@ gemini_worker_thread.start()
 def get_chatgpt_response():
     chat_completion = client.chat.completions.create(
         messages=conversation,
-        model=config['openai']['GPT.MODEL_NAME'],
+        model=CONFIG['openai']['GPT.MODEL_NAME'],
     )
     return chat_completion.choices[0].message.content
 
@@ -150,7 +161,7 @@ def get_gemini_response(user_input):
 def send_gpt_response(chatgpt_response, room):
     content = {
         "name": "ChatGPT",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": get_timestamp_utc(),
         "is_typing": True,
     }
 
@@ -198,7 +209,7 @@ def send_gpt_response(chatgpt_response, room):
 def send_gemini_response(gemini_response, room):
     content = {
         "name": "Gemini",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": get_timestamp_utc(),
         "is_typing": True,
     }
 
@@ -251,7 +262,7 @@ def message(data):
     content = {
         "name": "User",  # session.get("name"),
         "message": data["data"],
-        "timestamp": datetime.utcnow().isoformat(),  # 현재 시간을 UTC로 저장
+        "timestamp": get_timestamp_utc(),  # 현재 시간을 UTC로 저장
         "is_typing": False
     }
 
@@ -417,7 +428,7 @@ def handle_live_toggle(data):
     content = {
         "name": "User",  # session.get("name"),
         "message": f"{name} has gone {data['status']}",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": get_timestamp_utc(),
     }
 
     socketio.emit("notification", content, room=room)
@@ -440,7 +451,7 @@ def connect(auth):
     content = {
         "name": name,
         "message": f"{name} has entered the room",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": get_timestamp_utc(),
     }
     socketio.emit("notification", content, room=room)
     rooms[room]["members"] += 1
@@ -458,7 +469,7 @@ def sendTopic(json):
         content = {
             "name": "User",
             "message": '토론 주제는 "'+topic+'" 입니다.',
-            "timestamp": datetime.utcnow().isoformat(),  # 현재 시간을 UTC로 저장
+            "timestamp": get_timestamp_utc(),  # 현재 시간을 UTC로 저장
             "is_typing": False
         }
 

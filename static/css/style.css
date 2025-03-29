@@ -14,7 +14,8 @@ body {
 
 .message-box {
   border-radius: 8px;
-  background-color: #ffffff;/*#f7f7f7;*/
+  background-color: #ffffff;
+  /*#f7f7f7;*/
   display: flex;
   flex-direction: column;
   width: 80vw;
@@ -22,14 +23,14 @@ body {
   overflow-y: auto;
   padding: 20px;
   height: 80vh;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   line-height: 150%;
   /*letter-spacing: 1px;*/
 }
 
 .messages {
   overflow-y: auto;
-  max-height: 70vh; 
+  max-height: 70vh;
 }
 
 .message {
@@ -41,7 +42,7 @@ body {
 
 .name {
   font-weight: bold;
-  align-self: flex-start; 
+  align-self: flex-start;
   padding: 3px 0 0 6px;
 }
 
@@ -62,13 +63,15 @@ body {
 
 .message.user2 .bubble {
   align-self: flex-start;
-  background-color: #e5e5ea;/*#28a40f;*/
+  background-color: #e5e5ea;
+  /*#28a40f;*/
   color: black;
 }
 
 .chatgpt-response .bubble {
   align-self: flex-start;
-  background-color: #e5e5ea;/*#28a40f;*/
+  background-color: #e5e5ea;
+  /*#28a40f;*/
   color: black;
 }
 
@@ -79,9 +82,10 @@ body {
 }
 
 .message.admin .bubble {
-  background-color: rgb(3, 3, 108); /* Blue */
+  background-color: rgb(3, 3, 108);
+  /* Blue */
   align-self: center;
-  color: white; 
+  color: white;
   text-align: center;
   border-radius: 7px;
   padding: 10px;
@@ -89,15 +93,19 @@ body {
 
 .typing-message.user1 .bubble {
   align-self: flex-end;
-  background-color: darkgray; /*(221, 221, 221);*/
-  color: 	white;
+  background-color: darkgray;
+  /*(221, 221, 221);*/
+  color: white;
 }
 
 
 .typing-message.user2 .bubble {
   align-self: flex-start;
-  background-color: darkgray;/*rgb(221, 221, 221);*/
-  color: white;/*#404040rgb(255, 255, 255)*/;
+  background-color: darkgray;
+  /*rgb(221, 221, 221);*/
+  color: white;
+  /*#404040rgb(255, 255, 255)*/
+  ;
 }
 
 .timestamp {
@@ -126,10 +134,10 @@ body {
 }
 
 #message {
-  flex: 2; 
+  flex: 2;
   border-radius: 8px;
   border: 1px solid #ccc;
-  padding: 12px; 
+  padding: 12px;
   font-size: 16px;
 }
 
@@ -138,7 +146,7 @@ body {
   border: none;
   background-color: #007bff;
   color: white;
-  padding: 12px 20px; 
+  padding: 12px 20px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
@@ -149,7 +157,7 @@ body {
   border: 2px solid #007bff;
   background-color: rgb(255, 255, 255);
   color: rgb(0, 0, 0);
-  padding: 12px 20px; 
+  padding: 12px 20px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
@@ -160,22 +168,24 @@ body {
   border: none;
   background-color: #007bff;
   color: white;
-  padding: 6px 16px; 
+  padding: 6px 16px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
-  height:40px;
+  height: 40px;
 }
 
 #input-topic {
   background-color: #f4f4f4;
-  color: gray;/*#bcbcbc*/;
+  color: gray;
+  /*#bcbcbc*/
+  ;
   border: none;
   font-size: 12px;
   padding: 6px 16px 6px 12px;
   border-radius: 4px;
   width: 240px;
-  height:28px;
+  height: 28px;
 }
 
 .notification {
@@ -186,7 +196,7 @@ body {
 .logo {
   width: 30px;
   height: 30px;
-  border-radius: 50%; 
+  border-radius: 50%;
 }
 
 .profile {
@@ -200,34 +210,37 @@ body {
 
 @supports selector(::-webkit-scrollbar) {
   .scrollbar::-webkit-scrollbar {
-    background-color:#fff;
-    width:16px;
+    background-color: #fff;
+    width: 16px;
   }
-  
+
   /* background of the scrollbar except button or resizer */
   .scrollbar::-webkit-scrollbar-track {
-    background-color:#fff
+    background-color: #fff
   }
+
   .scrollbar::-webkit-scrollbar-track:hover {
-    background-color:#f4f4f4
+    background-color: #f4f4f4
   }
-  
+
   /* scrollbar itself */
   .scrollbar::-webkit-scrollbar-thumb {
-    background-color:#babac0;
-    border-radius:16px;
-    border:5px solid #fff
+    background-color: #babac0;
+    border-radius: 16px;
+    border: 5px solid #fff
   }
+
   .scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color:#a0a0a5;
-    border:4px solid #f4f4f4
+    background-color: #a0a0a5;
+    border: 4px solid #f4f4f4
   }
-  
+
   /* set button(top and bottom of the scrollbar) */
   .scrollbar::-webkit-scrollbar-button {
-    display:none
-  }  
+    display: none
+  }
 }
+
 .home-button-container {
   display: flex;
   justify-content: center;
@@ -240,20 +253,26 @@ body {
 
 .home-button {
   display: inline-block;
-  background-color: #007bff; /* 버튼 배경 색 */
-  color: white; /* 텍스트 색 */
+  background-color: #007bff;
+  /* 버튼 배경 색 */
+  color: white;
+  /* 텍스트 색 */
   padding: 10px 15px;
-  text-decoration: none; /* 밑줄 제거 */
+  text-decoration: none;
+  /* 밑줄 제거 */
   border: 2px solid #007bff;
-  border-radius: 5px; /* 모서리를 둥글게 */
+  border-radius: 5px;
+  /* 모서리를 둥글게 */
   /*font-weight: bold;  글자 굵게 */
-  transition: background-color 0.3s; /* 배경 색 변경 애니메이션 */
+  transition: background-color 0.3s;
+  /* 배경 색 변경 애니메이션 */
 }
 
 .home-button:hover {
   /*background-color: #2980b9;  마우스 오버 시 배경 색 변경 */
-  
-  background-color: white; /* 버튼 배경 색 */
+
+  background-color: white;
+  /* 버튼 배경 색 */
   color: #007bff;
   border: 2px solid #007bff;
 }

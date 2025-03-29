@@ -1,0 +1,8 @@
+flask
+flask-socketio
+fuzzywuzzy
+openai
+google-api-python-client
+google-cloud-texttospeech
+google-genai
+google-generativeai

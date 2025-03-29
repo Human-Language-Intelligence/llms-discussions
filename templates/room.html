@@ -5,13 +5,13 @@
     <h2>토론 주제: {{topic}}</h2>
     <div class="messages scrollbar" id="messages">
       {% for msg in messages %}
-        <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
-          <div class="bubble">
-            <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
-            <p>{{ msg.message }}</p>
-          </div>
-          <span class="timestamp">{{ msg.timestamp }}</span>
+      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
+        <div class="bubble">
+          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
+          <p>{{ msg.message }}</p>
         </div>
+        <span class="timestamp">{{ msg.timestamp }}</span>
+      </div>
       {% endfor %}
     </div>
     <!--<div class="inputs">
@@ -31,10 +31,10 @@
 
   const messages = document.getElementById("messages");
   const user1Name = "Gemini"//"{{ session['name'] }}";
-  const user2Name = "The Other User";  // TODO 
-  socketio.on("connect", function() {
+  const user2Name = "The Other User";  // TODO
+  socketio.on("connect", function () {
     var userTopic = "{{ topic }}"
-    socketio.emit('sendTopic', {topic: userTopic});
+    socketio.emit('sendTopic', { topic: userTopic });
   });
   var isLive = true; // default to live
   /*function toggleButtonText() {
@@ -43,8 +43,8 @@
         button.innerHTML = 'UnLive';
         button.classList.remove('live');
         button.classList.add('unlive');
-        isLive = false; 
-        socketio.emit('live-toggle', { status: 'UnLive' }); 
+        isLive = false;
+        socketio.emit('live-toggle', { status: 'UnLive' });
     } else {
         button.innerHTML = 'Live';
         button.classList.remove('unlive');
@@ -55,11 +55,11 @@
   } */
 
   const createMessage = (name, msg) => {
-  const isAdmin = name === 'admin'; 
-  const userClass = isAdmin ? 'admin' : (name === user1Name ? 'user1' : 'user2'); 
-  let content = '';
+    const isAdmin = name === 'admin';
+    const userClass = isAdmin ? 'admin' : (name === user1Name ? 'user1' : 'user2');
+    let content = '';
 
-  if (userClass === 'admin') {
+    if (userClass === 'admin') {
       content = `
       <div class="message ${userClass}">
         <div class="bubble">
@@ -68,8 +68,8 @@
         </div>
       </div>
       `;
-  } else {
-    content = `
+    } else {
+      content = `
     <div class="message ${userClass}">
       <div class="bubble">
         <div class="profile">
@@ -81,39 +81,39 @@
       <span class="timestamp">${new Date().toLocaleString()}</span>
     </div>
     `;
-  }
+    }
     messages.innerHTML += content;
     scrollDown();
-    };
+  };
 
   const createGPTMessage = (chatgptResponse) => {
-  let content = '';
+    let content = '';
 
-  const formattedResponse = chatgptResponse.replace(/\n/g, '<br>');
-  content += `
+    const formattedResponse = chatgptResponse.replace(/\n/g, '<br>');
+    content += `
   <div class="message chatgpt-response">
       <div class="bubble">
           <div class="profile">
             <img src="./static/ChatGPT.png" alt="ChatGPT" class="logo">
             <span class="name">ChatGPT - 찬성 측</span>
-          </div>  
+          </div>
           <p>${formattedResponse}</p>
       </div>
       <span class="timestamp">${new Date().toLocaleString()}</span>
   </div>
   `;
-  messages.innerHTML += content;
-  scrollDown();
+    messages.innerHTML += content;
+    scrollDown();
   };
-    
+
   const createGeminiMessage = (geminiResponse) => {
     let content = '';
-  
+
     const formattedResponse = geminiResponse.replace(/\n/g, '<br>');
     content += `
     <div class="message gemini-response">
-        <div class="bubble">        
-            <div class="profile">        
+        <div class="bubble">
+            <div class="profile">
               <img src="./static/Gemini.png" alt="Gemini" class="logo">
               <span class="name">Gemini - 반대 측</span>
             </div>
@@ -124,28 +124,28 @@
     `;
     messages.innerHTML += content;
     scrollDown();
-    };
+  };
 
   const showTyping = (name, typingText) => {
-  const isUser1 = name === user1Name;
-  const userClass = isUser1 ? 'user1' : 'user2';
-  const textAlignStyle = isUser1 ? 'flex-end' : 'flex-start';
+    const isUser1 = name === user1Name;
+    const userClass = isUser1 ? 'user1' : 'user2';
+    const textAlignStyle = isUser1 ? 'flex-end' : 'flex-start';
 
-  if (typingText === "") {
-  const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
-  if (existingTypingMessage) {
-    existingTypingMessage.remove();
-  }
-  return;
-  }
-  let a = ""
-  if (name == "ChatGPT") {
-    a = "찬성";
-  } else {
-    a = "반대"
-  }
-  const formattedtyping = typingText.replace(/\n/g, '<br>');
-  const typingContent = `
+    if (typingText === "") {
+      const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
+      if (existingTypingMessage) {
+        existingTypingMessage.remove();
+      }
+      return;
+    }
+    let a = ""
+    if (name == "ChatGPT") {
+      a = "찬성";
+    } else {
+      a = "반대"
+    }
+    const formattedtyping = typingText.replace(/\n/g, '<br>');
+    const typingContent = `
     <div class="message typing-message ${userClass} ${name}-typing-message">
       <div class="bubble" style="align-self: ${textAlignStyle};">
         <div class="profile">
@@ -158,22 +158,22 @@
     </div>
   `;
 
-  const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
-  if (existingTypingMessage) {
-    existingTypingMessage.innerHTML = typingContent;
-  } else {
-    messages.innerHTML += typingContent;
-  }
+    const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
+    if (existingTypingMessage) {
+      existingTypingMessage.innerHTML = typingContent;
+    } else {
+      messages.innerHTML += typingContent;
+    }
 
-  scrollDown();
-};
+    scrollDown();
+  };
 
   socketio.on("message", (data) => {
     if (data.is_typing) {
       showTyping(data.name, data.message);
     } else {
       createMessage(data.name, data.message);
-      const isUser1 = data.name === user1Name; 
+      const isUser1 = data.name === user1Name;
       const userClass = isUser1 ? 'user1' : 'user2'
       const existingTypingMessage = document.querySelector(`.${userClass}.${data.name}-typing-message`);
       if (existingTypingMessage) {
@@ -187,7 +187,7 @@
       showTyping("ChatGPT", data.message);
     } else {
       createGPTMessage(data.message);
-      const isUser1 = data.name === user1Name; 
+      const isUser1 = data.name === user1Name;
       const userClass = isUser1 ? 'user1' : 'user2'
       const existingTypingMessage = document.querySelector(`.${userClass}.ChatGPT-typing-message`);
       if (existingTypingMessage) {
@@ -201,7 +201,7 @@
       showTyping("Gemini", data.message);
     } else {
       createGeminiMessage(data.message);
-      const isUser1 = data.name === user1Name; 
+      const isUser1 = data.name === user1Name;
       const userClass = isUser1 ? 'user1' : 'user2'
       const existingTypingMessage = document.querySelector(`.${userClass}.Gemini-typing-message`);
       if (existingTypingMessage) {
@@ -209,43 +209,43 @@
       }
     }
   });
-  
+
   socketio.on("clear-gpt-response", () => {
-  const existingTypingMessage = document.querySelector('.ChatGPT-typing-message');
-  if (existingTypingMessage) {
-    simulateTypingRemoval(existingTypingMessage);
-  }
-});
-
-socketio.on("clear-gemini-response", () => {
-  const existingTypingMessage = document.querySelector('.Gemini-typing-message');
-  if (existingTypingMessage) {
-    simulateTypingRemoval(existingTypingMessage);
-  }
-});
-
-
-function simulateTypingRemoval(element) {
-  const messageElement = element.querySelector('.bubble p');
-  const typingText = messageElement.innerText;
-  const words = typingText.split(' ');
-  const wordCount = words.length;
-
-  // Simulate removing words with a slower delay
-  const delay = 100; // Adjust the delay to control the speed
-  let i = wordCount;
-
-  function removeWord() {
-    if (i >= 0) {
-      const updatedText = words.slice(0, i).join(' ');
-      messageElement.innerText = updatedText;
-      i--;
-      setTimeout(removeWord, delay);
+    const existingTypingMessage = document.querySelector('.ChatGPT-typing-message');
+    if (existingTypingMessage) {
+      simulateTypingRemoval(existingTypingMessage);
     }
-  }
+  });
 
-  removeWord();
-}
+  socketio.on("clear-gemini-response", () => {
+    const existingTypingMessage = document.querySelector('.Gemini-typing-message');
+    if (existingTypingMessage) {
+      simulateTypingRemoval(existingTypingMessage);
+    }
+  });
+
+
+  function simulateTypingRemoval(element) {
+    const messageElement = element.querySelector('.bubble p');
+    const typingText = messageElement.innerText;
+    const words = typingText.split(' ');
+    const wordCount = words.length;
+
+    // Simulate removing words with a slower delay
+    const delay = 100; // Adjust the delay to control the speed
+    let i = wordCount;
+
+    function removeWord() {
+      if (i >= 0) {
+        const updatedText = words.slice(0, i).join(' ');
+        messageElement.innerText = updatedText;
+        i--;
+        setTimeout(removeWord, delay);
+      }
+    }
+
+    removeWord();
+  }
 
   const createNotification = (msg) => {
     const content = `
@@ -255,11 +255,11 @@ function simulateTypingRemoval(element) {
     `;
     messages.innerHTML += content;
     messages.scrollTop = messages.scrollHeight;
-};
+  };
 
-  socketio.on('notification', function(data) {
-      const message = data.message;
-      createNotification(message);
+  socketio.on('notification', function (data) {
+    const message = data.message;
+    createNotification(message);
   });
 
   const sendMessage = () => {
@@ -271,7 +271,7 @@ function simulateTypingRemoval(element) {
       }
       message.value = "";
     }
-};
+  };
 
   /*const scrollDown = () => {
     messages.scrollTop = messages.scrollHeight;
@@ -280,7 +280,7 @@ function simulateTypingRemoval(element) {
     // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
     const threshold = 100; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
     const positionFromBottom = messages.scrollHeight - (messages.scrollTop + messages.clientHeight);
- 
+
     if (positionFromBottom < threshold) {
       messages.scrollTop = messages.scrollHeight;
     }
@@ -288,13 +288,13 @@ function simulateTypingRemoval(element) {
 
   const messageInput = document.getElementById("message");
 
-  messageInput.addEventListener("input", function() {
+  messageInput.addEventListener("input", function () {
     const typingText = messageInput.value.trim();
     if (isLive) {
-        socketio.emit("typing", { is_typing: typingText !== "", message: typingText });
+      socketio.emit("typing", { is_typing: typingText !== "", message: typingText });
     }
-});
-  messageInput.addEventListener("keydown", function(event) {
+  });
+  messageInput.addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
       event.preventDefault();
       sendMessage();

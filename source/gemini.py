@@ -31,7 +31,12 @@ class Gemini():
     def connect_session(self) -> None:
         self.client = generative_models.GenerativeModel(
             model_name=self.model_name,
-            # safety_settings=
+            safety_settings={
+                generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_NONE
+            }
         )
 
     def connect_chat(self) -> None:
@@ -89,9 +94,9 @@ if __name__ == "__main__":
             ],
         },
     ]
-    text = '인사해줘.'
 
     gemini = Gemini(history)
-    response = gemini.get_response(text)
+    gemini.append_history('assistant', '학교는 연구를 위한 곳입니다.')
+    response = gemini.get_response('위 내용에 대해서 답변해줘.')
 
     print(response)

@@ -133,7 +133,7 @@ def send_gpt_response(chatgpt_response, room):
     }
 
     for i, partial_response in enumerate(chatgpt_response):
-        # 지피티가 만들고 있던 응답을 여기서 삭제
+        # 만들고 있던 응답을 여기서 삭제
         if gpt_response_in_progress.get(room) == False:
             conversation.insert(-1, {"role": "assistant",
                                 "content": chatgpt_response[:i+1]})  # FIX
@@ -181,15 +181,9 @@ def send_gemini_response(gemini_response, room):
     }
 
     for i, partial_response in enumerate(gemini_response):
-        # 지피티가 만들고 있던 응답을 여기서 삭제
+        # 만들고 있던 응답을 여기서 삭제
         if gemini_response_in_progress.get(room) == False:
-            history = {
-                "role": "assistant",
-                "parts": [
-                    {"text": gemini_response[:i+1]}
-                ]
-            }
-            gemini.append_history(history)
+            gemini.append_history("assistant", gemini_response[:i+1])
             time.sleep(1)
             if len(sofar_message) > 120:
                 content["is_typing"] = False
@@ -211,13 +205,7 @@ def send_gemini_response(gemini_response, room):
         socketio.emit("gemini-message", content, room=room)
         time.sleep(get_random_time())
         if content["is_typing"] == False:
-            history = {
-                "role": "assistant",
-                "parts": [
-                    {"text": gemini_response[:i+1]}
-                ]
-            }
-            gemini.append_history(history)
+            gemini.append_history("assistant", gemini_response[:i+1])
             log_event("Send", "Gemini", content["message"])
         elif content["is_typing"] == True:
             log_event("Keystroke", "Gemini", content["message"])
@@ -227,32 +215,6 @@ def send_gemini_response(gemini_response, room):
         #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
         #        GPTmessage(content, room)
     return content
-
-
-@socketio.on("message")
-def message(data):
-    room = session.get("room")
-    if room not in rooms:
-        return
-
-    content = {
-        "name": "User",  # session.get("name"),
-        "message": data["data"],
-        "timestamp": get_timestamp_utc(),  # 현재 시간을 UTC로 저장
-        "is_typing": False
-    }
-
-    if content["message"].strip() == "":
-        return
-
-    if data["data"].strip() != "":
-        content["is_typing"] = False
-        rooms[room]["messages"].append(content)
-
-    socketio.emit("message", content, room=room)
-    # 키스트로크를 로그에 기록
-    log_event("Send", "User", content["message"])  # session.get("name")
-    GPTmessage(content, room)
 
 
 @socketio.on("gpt-message")
@@ -370,6 +332,31 @@ def Geminimessage(data, room):
             gemini_work_queue.put((gemini_response, room))
 
 
+@socketio.on("message")
+def message(data):
+    room = session.get("room")
+    if room not in rooms:
+        return
+
+    content = {
+        "name": "User",  # session.get("name"),
+        "message": data["data"],
+        "timestamp": get_timestamp_utc(),  # 현재 시간을 UTC로 저장
+        "is_typing": False
+    }
+
+    if data["data"].strip():
+        content["is_typing"] = False
+        rooms[room]["messages"].append(content)
+    else:
+        return
+
+    socketio.emit("message", content, room=room)
+    # 키스트로크를 로그에 기록
+    log_event("Send", "User", content["message"])  # session.get("name")
+    GPTmessage(content, room)
+
+
 @socketio.on("typing")
 def handle_typing(data):
     room = session.get("room")
@@ -385,7 +372,7 @@ def handle_typing(data):
     socketio.emit("message", content, room=room)
 
     # 키스트로크를 로그에 기록
-    if data["message"].strip() != "":
+    if data["message"].strip():
         log_event("Keystroke", "User", data["message"])  # session.get("name")
 
     if len(content['message']) > 70:  # 쌍방채팅 여기서 조정
@@ -412,6 +399,29 @@ def handle_live_toggle(data):
     log_event("toggle", "User", data["status"])  # session.get("name"),
 
 
+@socketio.on('sendTopic')
+def sendTopic(data):
+    topic = data.get('topic')
+    if topic:
+        room = session.get("room")
+        if room not in rooms:
+            return
+
+        content = {
+            "name": "User",
+            "message": '토론 주제는 "'+topic+'" 입니다.',
+            "timestamp": get_timestamp_utc(),  # 현재 시간을 UTC로 저장
+            "is_typing": False
+        }
+
+        if topic.strip() != "":
+            content["is_typing"] = False
+            rooms[room]["messages"].append(content)
+
+        log_event("Send", "User", content["message"])  # session.get("name")
+        GPTmessage(content, room)
+
+
 @socketio.on("connect")
 def connect(auth):
     room = session.get("room")
@@ -432,32 +442,6 @@ def connect(auth):
     socketio.emit("notification", content, room=room)
     rooms[room]["members"] += 1
     print(f"{name} joined room {room}")
-
-
-@socketio.on('sendTopic')
-def sendTopic(json):
-    topic = json.get('topic')
-    if topic != "":
-        room = session.get("room")
-        if room not in rooms:
-            return
-
-        content = {
-            "name": "User",
-            "message": '토론 주제는 "'+topic+'" 입니다.',
-            "timestamp": get_timestamp_utc(),  # 현재 시간을 UTC로 저장
-            "is_typing": False
-        }
-
-        if content["message"].strip() == "":
-            return
-
-        if topic.strip() != "":
-            content["is_typing"] = False
-            rooms[room]["messages"].append(content)
-
-        log_event("Send", "User", content["message"])  # session.get("name")
-        GPTmessage(content, room)
 
 
 @socketio.on("disconnect")

@@ -10,7 +10,7 @@ with open('config.ini', 'r') as f:
 
 
 class Gemini():
-    def __init__(self, history):
+    def __init__(self, history: list) -> None:
         aiplatform.init(
             project=_CONFIG['google']['GCP.PROJECT_ID'],
             location=_CONFIG['google']['GCP.LOCATION'],
@@ -28,16 +28,16 @@ class Gemini():
         self.connect_session()
         self.connect_chat()
 
-    def connect_session(self):
+    def connect_session(self) -> None:
         self.client = generative_models.GenerativeModel(
             model_name=self.model_name,
             # safety_settings=
         )
 
-    def connect_chat(self):
+    def connect_chat(self) -> None:
         self.chat = self.client.start_chat(history=self.conversations)
 
-    def get_response(self, text):
+    def get_response(self, text: str) -> str:
         response = self.chat.send_message(text)
         # probability = [_.avg_logprobs for _ in response.candidates]
         # result = [
@@ -48,7 +48,7 @@ class Gemini():
 
         return response.text
 
-    def convert_content(self, content: dict):
+    def convert_content(self, content: dict) -> generative_models.Content:
         content = generative_models.Content(
             role=content.get('role'),
             parts=[
@@ -57,13 +57,20 @@ class Gemini():
         )
         return content
 
-    def convert_history(self, contents: list):
+    def convert_history(self, contents: list) -> None:
         self.conversations = [
             self.convert_content(content) for content in contents
         ]
 
-    def append_history(self, content: dict):
+    def append_history(self, role: str, text: str) -> None:
+        content = {
+            "role": role,
+            "parts": [
+                {"text": text}
+            ],
+        }
         history = self.convert_content(content)
+
         self.conversations.append(history)
 
 

@@ -15,6 +15,8 @@ from google.oauth2 import service_account
 from google.cloud import aiplatform
 from vertexai.generative_models import GenerativeModel
 
+from source.gemini import Gemini
+
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read("config.ini")
@@ -23,36 +25,6 @@ app = Flask(__name__)
 app.secret_key = CONFIG['flask']['SECRET_KEY']
 socketio = SocketIO(app)
 
-aiplatform.init(
-    project=CONFIG['google']['GCP.PROJECT_ID'],
-    location=CONFIG['google']['GCP.LOCATION'],
-    credentials=service_account.Credentials.from_service_account_file(
-        CONFIG['google']['CREDENTIALS']
-    )
-)
-
-client = OpenAI(api_key=CONFIG['openai']['GPT.API_KEY'])
-gemini_client = GenerativeModel(
-    model_name=CONFIG["google"]['GEMINI.MODEL_NAME'],
-    safety_settings=[
-        {
-            "category": "HARM_CATEGORY_HARASSMENT",
-            "threshold": "BLOCK_NONE"
-        },
-        {
-            "category": "HARM_CATEGORY_HATE_SPEECH",
-            "threshold": "BLOCK_NONE"
-        },
-        {
-            "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            "threshold": "BLOCK_NONE"
-        },
-        {
-            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-            "threshold": "BLOCK_NONE"
-        },
-    ]
-)
 
 # "You are a debater with opposing views."}]
 conversation = [
@@ -70,7 +42,9 @@ gemini_conversation = [
         "parts": [{"text": "이해했습니다."}],
     },
 ]  # [{"role": "system", "parts":["You are a debater with opposing views."]}]
-gemini_chat = gemini_client.start_chat(history=gemini_conversation)
+
+client = OpenAI(api_key=CONFIG['openai']['GPT.API_KEY'])
+gemini = Gemini(gemini_conversation)
 
 # gpt 응답 생성 여부 추적
 gpt_response_in_progress = {}
@@ -151,11 +125,6 @@ def get_chatgpt_response():
         model=CONFIG['openai']['GPT.MODEL_NAME'],
     )
     return chat_completion.choices[0].message.content
-
-
-def get_gemini_response(user_input):
-    chat_completion = gemini_chat.send_message(user_input)
-    return chat_completion.text
 
 
 def send_gpt_response(chatgpt_response, room):
@@ -358,7 +327,7 @@ def Geminimessage(data, room):
                     # 유저가 타이핑 중에 20퍼센트 이상 다른 문장을 치면 다른 문장으로 응답 생성
                     if fuzz.ratio(gpt_response_in_progress[room], recent_user_typing) < 60:
                         gemini_response_in_progress[room] = False
-                        gemini_response = get_gemini_response(
+                        gemini_response = gemini.get_response(
                             recent_user_typing)
                         # True
                         gemini_response_in_progress[room] = gemini_response
@@ -367,7 +336,7 @@ def Geminimessage(data, room):
                         gpt_response_in_progress[room] = recent_user_typing
                 return
 
-            gemini_response = get_gemini_response(recent_user_typing)
+            gemini_response = gemini.get_response(recent_user_typing)
             gemini_response_in_progress[room] = gemini_response  # True
             # 사용자가 보낸 메시지 저장
             gpt_response_in_progress[room] = recent_user_typing
@@ -380,14 +349,14 @@ def Geminimessage(data, room):
                     if fuzz.ratio(gpt_response_in_progress[room], recent_user_typing) > 60:
                         return
                     gemini_response_in_progress[room] = False
-                    gemini_response = get_gemini_response(recent_user_typing)
+                    gemini_response = gemini.get_response(recent_user_typing)
                     gemini_response_in_progress[room] = gemini_response  # True
                     # 사용자가 보낸 메시지 저장
                     gpt_response_in_progress[room] = recent_user_typing
                     # 문제: 원래 치던 문장에서 send를 누르면 그걸 기반으로 다시 응답을 생성함.
                     gemini_work_queue.put((gemini_response, room))
             # else: # gpt 응답이 생성중이 아니라면 생성
-            gemini_response = get_gemini_response(recent_user_typing)
+            gemini_response = gemini.get_response(recent_user_typing)
             gemini_response_in_progress[room] = gemini_response  # True
             # 사용자가 보낸 메시지 저장
             gpt_response_in_progress[room] = recent_user_typing

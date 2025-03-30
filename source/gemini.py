@@ -38,14 +38,14 @@ class Gemini():
 
     def get_response(self, text):
         response = self.chat.send_message(text)
-        probability = [_.avg_logprobs for _ in response.candidates]
-        result = [
-            _.text for _ in response.candidates[
-                probability.index(max(probability))
-            ].content.parts if hasattr(_, 'text')
-        ]
+        # probability = [_.avg_logprobs for _ in response.candidates]
+        # result = [
+        #     _.text for _ in response.candidates[
+        #         probability.index(max(probability))
+        #     ].content.parts if hasattr(_, 'text')
+        # ]
 
-        return result
+        return response.text
 
     def convert_history(self, contents):
         history = [

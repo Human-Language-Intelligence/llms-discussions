@@ -4,12 +4,9 @@ from google.oauth2 import service_account
 from google.cloud import texttospeech
 
 with open('config.ini', 'r') as f:
-    _config = configparser.ConfigParser()
-    _config.read_file(f)
+    _CONFIG = configparser.ConfigParser()
+    _CONFIG.read_file(f)
 
-_credentials = service_account.Credentials.from_service_account_file(
-    filename=_config['google']['CREDENTIALS']
-)
 
 class TTS():
     def __init__(self) -> None:
@@ -20,7 +17,9 @@ class TTS():
         }
 
         self._client = texttospeech.TextToSpeechClient(
-            credentials=_credentials
+            credentials=service_account.Credentials.from_service_account_file(
+                filename=_CONFIG['google']['CREDENTIALS']
+            )
         )
         self.voice = texttospeech.VoiceSelectionParams(
             language_code=self.config['language'],

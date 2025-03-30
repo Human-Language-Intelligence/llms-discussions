@@ -22,8 +22,9 @@ class Gemini():
         self.model_name = _CONFIG["google"]['GEMINI.MODEL_NAME']
         self.client = None
         self.chat = None
-        self.conversations = self.convert_history(history)
+        self.conversations = None
 
+        self.convert_history(history)
         self.connect_session()
         self.connect_chat()
 
@@ -47,16 +48,23 @@ class Gemini():
 
         return response.text
 
-    def convert_history(self, contents):
-        history = [
-            generative_models.Content(
-                role=content.get('role'),
-                parts=[
-                    generative_models.Part.from_text(part.get('text')) for part in content.get('parts')
-                ]
-            ) for content in contents
+    def convert_content(self, content: dict):
+        content = generative_models.Content(
+            role=content.get('role'),
+            parts=[
+                generative_models.Part.from_text(part.get('text')) for part in content.get('parts')
+            ]
+        )
+        return content
+
+    def convert_history(self, contents: list):
+        self.conversations = [
+            self.convert_content(content) for content in contents
         ]
-        return history
+
+    def append_history(self, content: dict):
+        history = self.convert_content(content)
+        self.conversations.append(history)
 
 
 if __name__ == "__main__":

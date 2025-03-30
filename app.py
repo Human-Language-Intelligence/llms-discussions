@@ -11,9 +11,6 @@ from flask import Flask, render_template, request, session, redirect, url_for, r
 from flask_socketio import join_room, leave_room, send, SocketIO
 
 from openai import OpenAI
-from google.oauth2 import service_account
-from google.cloud import aiplatform
-from vertexai.generative_models import GenerativeModel
 
 from source.gemini import Gemini
 
@@ -25,10 +22,12 @@ app = Flask(__name__)
 app.secret_key = CONFIG['flask']['SECRET_KEY']
 socketio = SocketIO(app)
 
-
 # "You are a debater with opposing views."}]
 conversation = [
-    {"role": "system", "content": "You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."}
+    {
+        "role": "system",
+        "content": "You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
+    }
 ]
 gemini_conversation = [
     {
@@ -46,16 +45,16 @@ gemini_conversation = [
 client = OpenAI(api_key=CONFIG['openai']['GPT.API_KEY'])
 gemini = Gemini(gemini_conversation)
 
+work_queue = queue.Queue()
+gemini_work_queue = queue.Queue()
+gpt_lock = threading.Lock()
+
 # gpt 응답 생성 여부 추적
 gpt_response_in_progress = {}
 gemini_response_in_progress = {}
 # user_prompt_point = {}
 rooms = {}
 auto_stop = 0
-
-work_queue = queue.Queue()
-gemini_work_queue = queue.Queue()
-gpt_lock = threading.Lock()
 
 
 def get_timestamp_utc() -> str:
@@ -100,10 +99,6 @@ def worker():
         Geminimessage(content, room)
 
 
-worker_thread = threading.Thread(target=worker, daemon=True)
-worker_thread.start()
-
-
 def gemini_worker():
     global auto_stop
     while auto_stop < 10:
@@ -114,6 +109,9 @@ def gemini_worker():
         gemini_work_queue.task_done()
         GPTmessage(content, room)
 
+
+worker_thread = threading.Thread(target=worker, daemon=True)
+worker_thread.start()
 
 gemini_worker_thread = threading.Thread(target=gemini_worker, daemon=True)
 gemini_worker_thread.start()
@@ -185,9 +183,13 @@ def send_gemini_response(gemini_response, room):
     for i, partial_response in enumerate(gemini_response):
         # 지피티가 만들고 있던 응답을 여기서 삭제
         if gemini_response_in_progress.get(room) == False:
-            # FIX
-            gemini_conversation.insert(-1, {"role": "assistant",
-                                       "content": gemini_response[:i+1]})
+            history = {
+                "role": "assistant",
+                "parts": [
+                    {"text": gemini_response[:i+1]}
+                ]
+            }
+            gemini.append_history(history)
             time.sleep(1)
             if len(sofar_message) > 120:
                 content["is_typing"] = False
@@ -209,8 +211,13 @@ def send_gemini_response(gemini_response, room):
         socketio.emit("gemini-message", content, room=room)
         time.sleep(get_random_time())
         if content["is_typing"] == False:
-            gemini_conversation.append(
-                {"role": "assistant", "content": gemini_response[:i+1]})
+            history = {
+                "role": "assistant",
+                "parts": [
+                    {"text": gemini_response[:i+1]}
+                ]
+            }
+            gemini.append_history(history)
             log_event("Send", "Gemini", content["message"])
         elif content["is_typing"] == True:
             log_event("Keystroke", "Gemini", content["message"])

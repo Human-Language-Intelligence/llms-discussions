@@ -8,7 +8,7 @@ with open('config.ini', 'r') as f:
     _config.read_file(f)
 
 _credentials = service_account.Credentials.from_service_account_file(
-    filename=_config['GOOGLE']['credentials_path']
+    filename=_config['google']['CREDENTIALS']
 )
 
 class TTS():

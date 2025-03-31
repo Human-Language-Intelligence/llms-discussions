@@ -10,9 +10,8 @@ from fuzzywuzzy import fuzz
 from flask import Flask, render_template, request, session, redirect, url_for, request
 from flask_socketio import join_room, leave_room, send, SocketIO
 
-from openai import OpenAI
-
 from source.gemini import Gemini
+from source.chatgpt import ChatGPT
 
 
 CONFIG = configparser.ConfigParser()
@@ -23,13 +22,13 @@ app.secret_key = CONFIG['flask']['SECRET_KEY']
 socketio = SocketIO(app)
 
 # "You are a debater with opposing views."}]
-conversation = [
+gpt_history = [
     {
         "role": "system",
         "content": "You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
     }
 ]
-gemini_conversation = [
+gemini_history = [
     {
         "role": "user",
         "parts": [
@@ -40,10 +39,10 @@ gemini_conversation = [
         "role": "model",
         "parts": [{"text": "이해했습니다."}],
     },
-]  # [{"role": "system", "parts":["You are a debater with opposing views."]}]
+]
 
-client = OpenAI(api_key=CONFIG['openai']['GPT.API_KEY'])
-gemini = Gemini(gemini_conversation)
+gpt = ChatGPT(gpt_history)
+gemini = Gemini(gemini_history)
 
 work_queue = queue.Queue()
 gemini_work_queue = queue.Queue()
@@ -117,14 +116,6 @@ gemini_worker_thread = threading.Thread(target=gemini_worker, daemon=True)
 gemini_worker_thread.start()
 
 
-def get_chatgpt_response():
-    chat_completion = client.chat.completions.create(
-        messages=conversation,
-        model=CONFIG['openai']['GPT.MODEL_NAME'],
-    )
-    return chat_completion.choices[0].message.content
-
-
 def send_gpt_response(chatgpt_response, room):
     content = {
         "name": "ChatGPT",
@@ -135,8 +126,7 @@ def send_gpt_response(chatgpt_response, room):
     for i, partial_response in enumerate(chatgpt_response):
         # 만들고 있던 응답을 여기서 삭제
         if gpt_response_in_progress.get(room) == False:
-            conversation.insert(-1, {"role": "assistant",
-                                "content": chatgpt_response[:i+1]})  # FIX
+            gpt.append_history("assistant", chatgpt_response[:i+1])
             time.sleep(1)
             if len(sofar_message) > 120:
                 content["is_typing"] = False
@@ -159,8 +149,7 @@ def send_gpt_response(chatgpt_response, room):
 
         time.sleep(get_random_time())
         if content["is_typing"] == False:
-            conversation.append(
-                {"role": "assistant", "content": chatgpt_response[:i+1]})
+            gpt.append_history("assistant", chatgpt_response[:i+1])
             log_event("Send", "ChatGPT", content["message"])
         elif content["is_typing"] == True:
             log_event("Keystroke", "ChatGPT", content["message"])
@@ -229,9 +218,7 @@ def GPTmessage(data, room):
 
     with gpt_lock:
         if data["is_typing"] == False:
-            conversation.append(
-                {"role": "user", "content": recent_user_typing})
-
+            gpt.append_history("user", recent_user_typing)
         if data["is_typing"] == True:
             # room이라는 키가 존재하면 value값 반환, 없으면 False 반환
             if gpt_response_in_progress.get(room, False):
@@ -240,7 +227,7 @@ def GPTmessage(data, room):
                     # 유저가 타이핑 중에 20퍼센트 이상 다른 문장을 치면 다른 문장으로 응답 생성
                     if fuzz.ratio(gemini_response_in_progress[room], recent_user_typing) < 60:
                         gpt_response_in_progress[room] = False
-                        chatgpt_response = get_chatgpt_response()  # recent_user_typing)
+                        chatgpt_response = gpt.get_response()  # recent_user_typing)
                         # True
                         gpt_response_in_progress[room] = chatgpt_response
                         work_queue.put((chatgpt_response, room))
@@ -248,7 +235,7 @@ def GPTmessage(data, room):
                         gemini_response_in_progress[room] = recent_user_typing
                 return
 
-            chatgpt_response = get_chatgpt_response()  # recent_user_typing)
+            chatgpt_response = gpt.get_response()  # recent_user_typing)
             gpt_response_in_progress[room] = chatgpt_response  # True
             # 사용자가 보낸 메시지 저장
             gemini_response_in_progress[room] = recent_user_typing
@@ -262,7 +249,7 @@ def GPTmessage(data, room):
                     if fuzz.ratio(gemini_response_in_progress[room], recent_user_typing) > 60:
                         return
                     gpt_response_in_progress[room] = False
-                    chatgpt_response = get_chatgpt_response()  # recent_user_typing)
+                    chatgpt_response = gpt.get_response()  # recent_user_typing)
                     gpt_response_in_progress[room] = chatgpt_response  # True
                     # 사용자가 보낸 메시지 저장
                     gemini_response_in_progress[room] = recent_user_typing
@@ -270,7 +257,7 @@ def GPTmessage(data, room):
                     work_queue.put((chatgpt_response, room))
 
             # else: # gpt 응답이 생성중이 아니라면 생성
-            chatgpt_response = get_chatgpt_response()  # recent_user_typing)
+            chatgpt_response = gpt.get_response()  # recent_user_typing)
             gpt_response_in_progress[room] = chatgpt_response  # True
             # 사용자가 보낸 메시지 저장
             gemini_response_in_progress[room] = recent_user_typing

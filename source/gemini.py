@@ -10,7 +10,7 @@ with open('config.ini', 'r') as f:
 
 
 class Gemini():
-    def __init__(self, history: list) -> None:
+    def __init__(self, history: list = []) -> None:
         aiplatform.init(
             project=_CONFIG['google']['GCP.PROJECT_ID'],
             location=_CONFIG['google']['GCP.LOCATION'],
@@ -22,7 +22,7 @@ class Gemini():
         self.model_name = _CONFIG["google"]['GEMINI.MODEL_NAME']
         self.client = None
         self.chat = None
-        self.conversations = None
+        self.conversations = []
 
         self.convert_history(history)
         self.connect_session()

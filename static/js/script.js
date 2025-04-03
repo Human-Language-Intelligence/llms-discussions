@@ -1,7 +1,7 @@
 var socketio = io();
 var isLive = true; // default to live
 
-const messages = document.getElementById("messages");
+const messageBoxes = document.getElementById("messages");
 const user1Name = "Gemini"; //"{{ session['name'] }}";
 const user2Name = "The Other User"; // TODO
 
@@ -12,10 +12,11 @@ const scrollDown = () => {
   // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
   const threshold = 100; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
   const positionFromBottom =
-    messages.scrollHeight - (messages.scrollTop + messages.clientHeight);
+    messageBoxes.scrollHeight -
+    (messageBoxes.scrollTop + messageBoxes.clientHeight);
 
   if (positionFromBottom < threshold) {
-    messages.scrollTop = messages.scrollHeight;
+    messageBoxes.scrollTop = messageBoxes.scrollHeight;
   }
 };
 
@@ -58,7 +59,7 @@ const createMessage = (name, msg) => {
     </div>
     `;
   }
-  messages.innerHTML += content;
+  messageBoxes.innerHTML += content;
   scrollDown();
 };
 
@@ -78,7 +79,7 @@ const createGPTMessage = (chatgptResponse) => {
       <span class="timestamp">${new Date().toLocaleString()}</span>
   </div>
   `;
-  messages.innerHTML += content;
+  messageBoxes.innerHTML += content;
   scrollDown();
 };
 
@@ -98,7 +99,7 @@ const createGeminiMessage = (geminiResponse) => {
         <span class="timestamp gemini">${new Date().toLocaleString()}</span>
     </div>
     `;
-  messages.innerHTML += content;
+  messageBoxes.innerHTML += content;
   scrollDown();
 };
 
@@ -144,7 +145,7 @@ const showTyping = (name, typingText) => {
   if (existingTypingMessage) {
     existingTypingMessage.innerHTML = typingContent;
   } else {
-    messages.innerHTML += typingContent;
+    messageBoxes.innerHTML += typingContent;
   }
 
   scrollDown();
@@ -156,8 +157,8 @@ const createNotification = (msg) => {
         <p>${msg}</p>
       </div>
     `;
-  messages.innerHTML += content;
-  messages.scrollTop = messages.scrollHeight;
+  messageBoxes.innerHTML += content;
+  messageBoxes.scrollTop = messageBoxes.scrollHeight;
 };
 
 function simulateTypingRemoval(element) {
@@ -199,8 +200,8 @@ function simulateTypingRemoval(element) {
 //   }
 // }
 
-messages.addEventListener("input", function () {
-  const typingText = messages.value.trim();
+messageBoxes.addEventListener("input", function () {
+  const typingText = messageBoxes.value.trim();
   if (isLive) {
     socketio.emit("typing", {
       is_typing: typingText !== "",
@@ -209,7 +210,7 @@ messages.addEventListener("input", function () {
   }
 });
 
-messages.addEventListener("keydown", function (event) {
+messageBoxes.addEventListener("keydown", function (event) {
   if (event.key === "Enter") {
     event.preventDefault();
     sendMessage();

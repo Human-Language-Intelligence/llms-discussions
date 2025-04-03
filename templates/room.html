@@ -1,25 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="message-box ">
-  <div>
-    <h2>토론 주제: {{topic}}</h2>
-    <div class="messages scrollbar" id="messages">
-      {% for msg in messages %}
-      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
-        <div class="bubble">
-          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
-          <p>{{ msg.message }}</p>
-        </div>
-        <span class="timestamp">{{ msg.timestamp }}</span>
+  <h2>토론 주제: {{topic}}</h2>
+  <div class="messages scrollbar" id="messages">
+    {% for msg in messages %}
+    <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
+      <div class="bubble">
+        <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
+        <p>{{ msg.message }}</p>
       </div>
-      {% endfor %}
+      <span class="timestamp">{{ msg.timestamp }}</span>
     </div>
-    <!-- <div class="inputs">
-      <input type="text" rows="3" placeholder="Message" name="message" id="message" />
-      <button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
-      <button type="button" name="live" id="live-btn" onClick="toggleButtonText()">Live</button>
-    </div> -->
+    {% endfor %}
   </div>
+  <!-- <div class="inputs">
+    <input type="text" rows="3" placeholder="Message" name="message" id="message" />
+    <button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
+    <button type="button" name="live" id="live-btn" onClick="toggleButtonText()">Live</button>
+  </div> -->
 </section>
 
 <section class="home-button-container">

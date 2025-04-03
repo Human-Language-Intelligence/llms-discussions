@@ -23,7 +23,8 @@ app = Flask(__name__)
 app.secret_key = CONFIG['flask']['SECRET_KEY']
 socketio = SocketIO(app)
 
-tts_client = TTS()
+tts_M = TTS(3)
+tts_F = TTS(1)
 
 # "You are a debater with opposing views."}]
 gpt_history = [
@@ -150,7 +151,7 @@ def send_gpt_response(chatgpt_response, room):
             gpt_response_in_progress[room] = False
 
             try:
-                tts_response = tts_client.request(content["message"])
+                tts_response = tts_F.request(content["message"])
                 audio_base64 = base64.b64encode(tts_response).decode('utf-8')
                 content["audio_base64"] = audio_base64
             except Exception as e:
@@ -203,7 +204,7 @@ def send_gemini_response(gemini_response, room):
             gemini_response_in_progress[room] = False
 
             try:
-                tts_response = tts_client.request(content["message"])
+                tts_response = tts_M.request(content["message"])
                 audio_base64 = base64.b64encode(tts_response).decode('utf-8')
                 content["audio_base64"] = audio_base64
             except Exception as e:

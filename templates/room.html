@@ -50,9 +50,9 @@
   const sendMessage = () => {
     const message = document.getElementById("message");
     if (message.value.trim() !== "") {
-      socketio.emit("message", { data: message.value });
+      socketIO.emit("message", { data: message.value });
       if (!isLive) {
-        socketio.emit("typing", { is_typing: false, message: "" });
+        socketIO.emit("typing", { is_typing: false, message: "" });
       }
       message.value = "";
     }
@@ -217,20 +217,20 @@
   //     button.classList.remove("live");
   //     button.classList.add("unlive");
   //     isLive = false;
-  //     socketio.emit("live-toggle", { status: "UnLive" });
+  //     socketIO.emit("live-toggle", { status: "UnLive" });
   //   } else {
   //     button.innerHTML = "Live";
   //     button.classList.remove("unlive");
   //     button.classList.add("live");
   //     isLive = true;
-  //     socketio.emit("live-toggle", { status: "Live" });
+  //     socketIO.emit("live-toggle", { status: "Live" });
   //   }
   // }
 
   messageBoxes.addEventListener("input", function () {
     const typingText = messageBoxes.value.trim();
     if (isLive) {
-      socketio.emit("typing", {
+      socketIO.emit("typing", {
         is_typing: typingText !== "",
         message: typingText,
       });
@@ -281,8 +281,8 @@
       if (data.audio_base64) {
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
-        audio.onended = function() {
-          socketio.emit("tts_finished", { side: data.name, room: "{{ code }}" });
+        audio.onended = function () {
+          socketIO.emit("tts_finished", { side: data.name, room: "{{ code }}" });
         };
       }
     }
@@ -302,10 +302,10 @@
         existingTypingMessage.remove();
       }
       if (data.audio_base64) {
-        const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+        const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
-        audio.onended = function() {
-          socketio.emit("tts_finished", { side: data.name, room: "{{ code }}" });
+        audio.onended = function () {
+          socketIO.emit("tts_finished", { side: data.name, room: "{{ code }}" });
         };
       }
     }

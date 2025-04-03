@@ -193,6 +193,11 @@
       if (existingTypingMessage) {
         existingTypingMessage.remove();
       }
+
+      if (data.audio_base64) {
+        const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+        audio.play();
+      }
     }
   });
 

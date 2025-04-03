@@ -117,7 +117,14 @@ worker_thread.start()
 gemini_worker_thread = threading.Thread(target=gemini_worker, daemon=True)
 gemini_worker_thread.start()
 
+last_tts_sent={}
+
 def async_tts_emit(text, room, speaker):
+    key = f"{speaker}:{room}"
+    if last_tts_sent.get(key) == text:
+        return  # 이미 처리된 텍스트면 skip
+
+    last_tts_sent[key] = text
     try:
         audio_base64 = tts_client.request_base64(text)
         socketio.emit(f"{speaker}-audio", {"audio_base64": audio_base64}, room=room)

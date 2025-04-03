@@ -97,10 +97,9 @@ def worker():
         chatgpt_response, room = work_queue.get()
         if chatgpt_response is None:
             break
-        content = send_gpt_response(chatgpt_response, room)
+        
+        send_gpt_response(chatgpt_response, room)
         work_queue.task_done()
-        Geminimessage(content, room)
-
 
 def gemini_worker():
     global auto_stop
@@ -127,53 +126,53 @@ def send_gpt_response(chatgpt_response, room):
         "is_typing": True,
     }
 
+    gpt_response_in_progress[room] = True
+
     for i, partial_response in enumerate(chatgpt_response):
         # 만들고 있던 응답을 여기서 삭제
-        if gpt_response_in_progress.get(room) == False:
+        """if gpt_response_in_progress.get(room) == False:
             gpt.append_history("assistant", chatgpt_response[:i+1])
-            # time.sleep(1)
-            """if len(sofar_message) > 120:
+            time.sleep(1)
+            if len(sofar_message) > 120:
                 content["is_typing"] = False
                 content["message"] = content["message"] + "..."
                 socketio.emit("gpt-message", content, room=room)
                 log_event("Send", "ChatGPT", content["message"])
-                return"""
+                return
             socketio.emit("clear-gpt-response", room=room)
-            # time.sleep(1)
+            time.sleep(1)
+            return"""
+
+        if not gpt_response_in_progress.get(room, False):
+            gpt.append_history("assistant", chatgpt_response[:i+1])
+            socketio.emit("clear-gpt-response", room=room)
             return
 
         sofar_message = chatgpt_response[:i+1]
 
-        if len(sofar_message.strip()) < 5:
-            continue
-        
-        try:
-            tts_response = tts_client.request(sofar_message)
-            audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
-        except Exception as e:
-            print("TTS error:", e)
-            audio_base64 = None
-        
         content.update({
             "message": sofar_message,
-            "is_typing": i < len(chatgpt_response) - 1,
-            "audio_base64": audio_base64
+            "is_typing": i < len(chatgpt_response) - 1
         })
-
         socketio.emit("gpt-message", content, room=room)
 
-        if content["is_typing"]:
-            log_event("Keystroke", "ChatGPT", sofar_message)
-        else:
-            log_event("Send", "ChatGPT", sofar_message)
-            gpt.append_history("assistant", chatgpt_response[:i+1])
-        
-        time.sleep(get_random_time())
+        # TTS는 비동기로 실행
+        if not content["is_typing"]:
+            threading.Thread(
+                target=async_tts_emit,
+                args=(sofar_message, room, "gpt")
+            ).start()
 
-        # Interrupt
-        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
-        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
-        #        Geminimessage(content, room)
+        # 로그 기록
+        log_event("Keystroke" if content["is_typing"] else "Send", "ChatGPT", sofar_message)
+
+        time.sleep(get_random_time())
+        
+    gpt_response_in_progress[room] = False
+    gpt.append_history("assistant", chatgpt_response)
+
+    # Gemini의 응답을 트리거
+    Geminimessage({"name": "ChatGPT", "message": chatgpt_response, "is_typing": False}, room)
 
     return content
 

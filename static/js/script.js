@@ -1,0 +1,292 @@
+var socketio = io();
+
+const messages = document.getElementById("messages");
+const user1Name = "Gemini"; //"{{ session['name'] }}";
+const user2Name = "The Other User"; // TODO
+
+socketio.on("connect", function () {
+  var userTopic = "{{ topic }}";
+  socketio.emit("sendTopic", { topic: userTopic });
+});
+
+var isLive = true; // default to live
+// function toggleButtonText() {
+//   var button = document.getElementById("live-btn");
+//   if (button.innerHTML === "Live") {
+//     button.innerHTML = "UnLive";
+//     button.classList.remove("live");
+//     button.classList.add("unlive");
+//     isLive = false;
+//     socketio.emit("live-toggle", { status: "UnLive" });
+//   } else {
+//     button.innerHTML = "Live";
+//     button.classList.remove("unlive");
+//     button.classList.add("live");
+//     isLive = true;
+//     socketio.emit("live-toggle", { status: "Live" });
+//   }
+// }
+
+const createMessage = (name, msg) => {
+  const isAdmin = name === "admin";
+  const userClass = isAdmin ? "admin" : name === user1Name ? "user1" : "user2";
+  let content = "";
+
+  if (userClass === "admin") {
+    content = `
+      <div class="message ${userClass}">
+        <div class="bubble">
+          <span class="name">${name}</span>
+          <p>${msg}</p>
+        </div>
+      </div>
+      `;
+  } else {
+    content = `
+    <div class="message ${userClass}">
+      <div class="bubble">
+        <div class="profile">
+          <img src="./static/User.png" alt="user" class="logo">
+          <span class="name">${name}</span>
+        </div>
+        <p>${msg}</p>
+      </div>
+      <span class="timestamp">${new Date().toLocaleString()}</span>
+    </div>
+    `;
+  }
+  messages.innerHTML += content;
+  scrollDown();
+};
+
+const createGPTMessage = (chatgptResponse) => {
+  let content = "";
+
+  const formattedResponse = chatgptResponse.replace(/\n/g, "<br>");
+  content += `
+  <div class="message chatgpt-response">
+      <div class="bubble">
+          <div class="profile">
+            <img src="./static/ChatGPT.png" alt="ChatGPT" class="logo">
+            <span class="name">ChatGPT - 찬성 측</span>
+          </div>
+          <p>${formattedResponse}</p>
+      </div>
+      <span class="timestamp">${new Date().toLocaleString()}</span>
+  </div>
+  `;
+  messages.innerHTML += content;
+  scrollDown();
+};
+
+const createGeminiMessage = (geminiResponse) => {
+  let content = "";
+
+  const formattedResponse = geminiResponse.replace(/\n/g, "<br>");
+  content += `
+    <div class="message gemini-response">
+        <div class="bubble">
+            <div class="profile">
+              <img src="./static/Gemini.png" alt="Gemini" class="logo">
+              <span class="name">Gemini - 반대 측</span>
+            </div>
+            <p>${formattedResponse}</p>
+        </div>
+        <span class="timestamp gemini">${new Date().toLocaleString()}</span>
+    </div>
+    `;
+  messages.innerHTML += content;
+  scrollDown();
+};
+
+const showTyping = (name, typingText) => {
+  const isUser1 = name === user1Name;
+  const userClass = isUser1 ? "user1" : "user2";
+  const textAlignStyle = isUser1 ? "flex-end" : "flex-start";
+
+  if (typingText === "") {
+    const existingTypingMessage = document.querySelector(
+      `.${userClass}.${name}-typing-message`
+    );
+    if (existingTypingMessage) {
+      existingTypingMessage.remove();
+    }
+    return;
+  }
+  let a = "";
+  if (name == "ChatGPT") {
+    a = "찬성";
+  } else {
+    a = "반대";
+  }
+  const formattedtyping = typingText.replace(/\n/g, "<br>");
+  const typingContent = `
+    <div class="message typing-message ${userClass} ${name}-typing-message">
+      <div class="bubble" style="align-self: ${textAlignStyle};">
+        <div class="profile">
+          <img src="./static/${name}.png" class="logo">
+          <span class="name">${name} - ${a} 측</span>
+        </div>
+        <p>${formattedtyping}</p>
+      </div>
+      <span class="timestamp"> ${name} is typing ... </span>
+    </div>
+  `;
+
+  const existingTypingMessage = document.querySelector(
+    `.${userClass}.${name}-typing-message`
+  );
+  if (existingTypingMessage) {
+    existingTypingMessage.innerHTML = typingContent;
+  } else {
+    messages.innerHTML += typingContent;
+  }
+
+  scrollDown();
+};
+
+socketio.on("message", (data) => {
+  if (data.is_typing) {
+    showTyping(data.name, data.message);
+  } else {
+    createMessage(data.name, data.message);
+    const isUser1 = data.name === user1Name;
+    const userClass = isUser1 ? "user1" : "user2";
+    const existingTypingMessage = document.querySelector(
+      `.${userClass}.${data.name}-typing-message`
+    );
+    if (existingTypingMessage) {
+      existingTypingMessage.remove();
+    }
+  }
+});
+
+socketio.on("gpt-message", (data) => {
+  if (data.is_typing) {
+    showTyping("ChatGPT", data.message);
+  } else {
+    createGPTMessage(data.message);
+    const isUser1 = data.name === user1Name;
+    const userClass = isUser1 ? "user1" : "user2";
+    const existingTypingMessage = document.querySelector(
+      `.${userClass}.ChatGPT-typing-message`
+    );
+    if (existingTypingMessage) {
+      existingTypingMessage.remove();
+    }
+  }
+});
+
+socketio.on("gemini-message", (data) => {
+  if (data.is_typing) {
+    showTyping("Gemini", data.message);
+  } else {
+    createGeminiMessage(data.message);
+    const isUser1 = data.name === user1Name;
+    const userClass = isUser1 ? "user1" : "user2";
+    const existingTypingMessage = document.querySelector(
+      `.${userClass}.Gemini-typing-message`
+    );
+    if (existingTypingMessage) {
+      existingTypingMessage.remove();
+    }
+  }
+});
+
+socketio.on("clear-gpt-response", () => {
+  const existingTypingMessage = document.querySelector(
+    ".ChatGPT-typing-message"
+  );
+  if (existingTypingMessage) {
+    simulateTypingRemoval(existingTypingMessage);
+  }
+});
+
+socketio.on("clear-gemini-response", () => {
+  const existingTypingMessage = document.querySelector(
+    ".Gemini-typing-message"
+  );
+  if (existingTypingMessage) {
+    simulateTypingRemoval(existingTypingMessage);
+  }
+});
+
+function simulateTypingRemoval(element) {
+  const messageElement = element.querySelector(".bubble p");
+  const typingText = messageElement.innerText;
+  const words = typingText.split(" ");
+  const wordCount = words.length;
+
+  // Simulate removing words with a slower delay
+  const delay = 100; // Adjust the delay to control the speed
+  let i = wordCount;
+
+  function removeWord() {
+    if (i >= 0) {
+      const updatedText = words.slice(0, i).join(" ");
+      messageElement.innerText = updatedText;
+      i--;
+      setTimeout(removeWord, delay);
+    }
+  }
+
+  removeWord();
+}
+
+const createNotification = (msg) => {
+  const content = `
+      <div class="notification">
+        <p>${msg}</p>
+      </div>
+    `;
+  messages.innerHTML += content;
+  messages.scrollTop = messages.scrollHeight;
+};
+
+socketio.on("notification", function (data) {
+  const message = data.message;
+  createNotification(message);
+});
+
+const sendMessage = () => {
+  const message = document.getElementById("message");
+  if (message.value.trim() !== "") {
+    socketio.emit("message", { data: message.value });
+    if (!isLive) {
+      socketio.emit("typing", { is_typing: false, message: "" });
+    }
+    message.value = "";
+  }
+};
+
+// const scrollDown = () => {
+//   messages.scrollTop = messages.scrollHeight;
+// };
+const scrollDown = () => {
+  // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
+  const threshold = 100; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
+  const positionFromBottom =
+    messages.scrollHeight - (messages.scrollTop + messages.clientHeight);
+
+  if (positionFromBottom < threshold) {
+    messages.scrollTop = messages.scrollHeight;
+  }
+};
+
+const messageInput = document.getElementById("message");
+
+messageInput.addEventListener("input", function () {
+  const typingText = messageInput.value.trim();
+  if (isLive) {
+    socketio.emit("typing", {
+      is_typing: typingText !== "",
+      message: typingText,
+    });
+  }
+});
+messageInput.addEventListener("keydown", function (event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    sendMessage();
+  }
+});

@@ -1,15 +1,15 @@
+import base64
+import string
 import time
 import random
 import queue
 import threading
 import configparser
-import base64
+import flask
+import flask_socketio
 
-from string import ascii_uppercase
 from datetime import datetime, timezone
 from fuzzywuzzy import fuzz
-from flask import Flask, render_template, request, session, redirect, url_for, request
-from flask_socketio import join_room, leave_room, send, SocketIO
 
 from source.gemini import Gemini
 from source.chatgpt import ChatGPT
@@ -19,9 +19,9 @@ from source.tts import TTS
 CONFIG = configparser.ConfigParser()
 CONFIG.read("config.ini")
 
-app = Flask(__name__)
+app = flask.Flask(__name__)
 app.secret_key = CONFIG['flask']['SECRET_KEY']
-socketio = SocketIO(app)
+socketio = flask_socketio.SocketIO(app)
 
 tts_M = TTS(3)
 tts_F = TTS(1)
@@ -77,7 +77,7 @@ def generate_unique_code(length):
     while True:
         code = ""
         for _ in range(length):
-            code += random.choice(ascii_uppercase)
+            code += random.choice(string.ascii_uppercase)
 
         if code not in rooms:
             break
@@ -340,7 +340,7 @@ def Geminimessage(data, room):
 
 @socketio.on("message")
 def message(data):
-    room = session.get("room")
+    room = flask.session.get("room")
     if room not in rooms:
         return
 
@@ -365,7 +365,7 @@ def message(data):
 
 @socketio.on("typing")
 def handle_typing(data):
-    room = session.get("room")
+    room = flask.session.get("room")
     if room not in rooms:
         return
 
@@ -376,11 +376,9 @@ def handle_typing(data):
     }
 
     socketio.emit("message", content, room=room)
-
     # 키스트로크를 로그에 기록
     if data["message"].strip():
         log_event("Keystroke", "User", data["message"])  # session.get("name")
-
     if len(content['message']) > 70:  # 쌍방채팅 여기서 조정
         if random.randint(0, 1) == 1:
             GPTmessage(content)
@@ -388,12 +386,11 @@ def handle_typing(data):
 
 @socketio.on("live-toggle")
 def handle_live_toggle(data):
-    room = session.get("room")
+    room = flask.session.get("room")
     if room not in rooms:
         return
 
     name = "User"  # session.get("name")
-
     content = {
         "name": "User",  # session.get("name"),
         "message": f"{name} has gone {data['status']}",
@@ -401,7 +398,6 @@ def handle_live_toggle(data):
     }
 
     socketio.emit("notification", content, room=room)
-
     log_event("toggle", "User", data["status"])  # session.get("name"),
 
 
@@ -409,7 +405,7 @@ def handle_live_toggle(data):
 def sendTopic(data):
     topic = data.get('topic')
     if topic:
-        room = session.get("room")
+        room = flask.session.get("room")
         if room not in rooms:
             return
 
@@ -430,21 +426,23 @@ def sendTopic(data):
 
 @socketio.on("connect")
 def connect(auth):
-    room = session.get("room")
-    topic = session.get("topic")
+    room = flask.session.get("room")
+    topic = flask.session.get("topic")
     if not room or not topic:
         return
     if room not in rooms:
-        leave_room(room)
+        flask_socketio.leave_room(room)
         return
 
-    join_room(room)
+    flask_socketio.join_room(room)
+
     name = "User"  # session.get("name")
     content = {
         "name": name,
         "message": f"{name} has entered the room",
         "timestamp": get_timestamp_utc(),
     }
+
     socketio.emit("notification", content, room=room)
     rooms[room]["members"] += 1
     print(f"{name} joined room {room}")
@@ -452,46 +450,53 @@ def connect(auth):
 
 @socketio.on("disconnect")
 def disconnect():
-    room = session.get("room")
+    room = flask.session.get("room")
     name = "User"  # session.get("name")
-    leave_room(room)
 
+    flask_socketio.leave_room(room)
     if room in rooms:
         rooms[room]["members"] -= 1
         if rooms[room]["members"] <= 0:
             del rooms[room]
 
-    send({"name": name, "message": "has left the room"}, to=room)
+    flask_socketio.send(
+        {"name": name, "message": "has left the room"}, to=room
+    )
     print(f"{name} has left the room {room}")
 
 
 @app.route("/", methods=["POST", "GET"])
 def home():
-    session.clear()
-    if request.method == "POST":
-        topic = request.form.get("topic")
+    flask.session.clear()
+    if flask.request.method == "POST":
+        topic = flask.request.form.get("topic")
         if not topic:
-            return render_template("home.html", error="Please enter a topic.")
+            return flask.render_template("home.html", error="Please enter a topic.")
 
         room = generate_unique_code(2)
         rooms[room] = {"members": 0, "messages": []}
 
-        session["room"] = room
-        session["topic"] = topic
-        return redirect(url_for("room"))
+        flask.session["room"] = room
+        flask.session["topic"] = topic
 
-    return render_template("home.html")
+        return flask.redirect(flask.url_for("room"))
+
+    return flask.render_template("home.html")
 
 
 @app.route("/room")
 def room():
-    room = session.get("room")
-    topic = session.get("topic")
-
+    room = flask.session.get("room")
+    topic = flask.session.get("topic")
     if room is None or topic is None or room not in rooms:
-        return redirect(url_for("home"))
+        return flask.redirect(flask.url_for("home"))
 
-    return render_template("room.html", code=room, topic=topic, messages=rooms[room]["messages"])
+    return flask.render_template(
+        "room.html",
+        code=room,
+        topic=topic,
+        messages=rooms[room]["messages"]
+    )
 
 
 if __name__ == "__main__":

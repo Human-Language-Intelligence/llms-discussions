@@ -189,38 +189,45 @@ def send_gemini_response(gemini_response, room):
         # 만들고 있던 응답을 여기서 삭제
         if gemini_response_in_progress.get(room) == False:
             gemini.append_history("assistant", gemini_response[:i+1])
-            time.sleep(1)
-            if len(sofar_message) > 120:
+            # time.sleep(1)
+            """if len(sofar_message) > 120:
                 content["is_typing"] = False
                 content["message"] = content["message"] + "..."
                 socketio.emit("gemini-message", content, room=room)
                 log_event("Send", "Gemini", content["message"])
-                return
+                return"""
             socketio.emit("clear-gemini-response", room=room)
-            time.sleep(1)
+            # time.sleep(1)
             return
 
         sofar_message = gemini_response[:i+1]
-        content["message"] = sofar_message
 
-        if i == len(gemini_response) - 1:
-            content["is_typing"] = False
-            gemini_response_in_progress[room] = False
+        if len(sofar_message.strip()) < 5:
+            continue
+        
+        try:
+            tts_response = tts_client.request(sofar_message)
+            audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
+        except Exception as e:
+            print("TTS error:", e)
+            audio_base64 = None
 
-            try:
-                tts_response = tts_client.request(content["message"])
-                audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
-                content["audio_base64"] = audio_base64
-            except Exception as e:
-                print("TTS error:", e)
+        content.update({
+            "message": sofar_message,
+            "is_typing": i < len(gemini_response) - 1,
+            "audio_base64": audio_base64
+        })
 
         socketio.emit("gemini-message", content, room=room)
-        time.sleep(get_random_time())
-        if content["is_typing"] == False:
+
+        if content["is_typing"]:
+            log_event("Keystroke", "Gemini", sofar_message)
+        else:
+            log_event("Send", "Gemini", sofar_message)
             gemini.append_history("assistant", gemini_response[:i+1])
-            log_event("Send", "Gemini", content["message"])
-        elif content["is_typing"] == True:
-            log_event("Keystroke", "Gemini", content["message"])
+
+
+        time.sleep(get_random_time())
 
         # Interrupt
         # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정

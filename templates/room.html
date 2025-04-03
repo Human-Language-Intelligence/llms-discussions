@@ -218,6 +218,18 @@
     }
   });
 
+  // ChatGPT 음성 수신 후 재생
+  socketio.on("gpt-audio", (data) => {
+    const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+    audio.play();
+  });
+
+  // Gemini 음성 수신 후 재생
+  socketio.on("gemini-audio", (data) => {
+    const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+    audio.play();
+  });
+
   socketio.on("clear-gpt-response", () => {
     const existingTypingMessage = document.querySelector('.ChatGPT-typing-message');
     if (existingTypingMessage) {

@@ -39,6 +39,10 @@ class TTS():
 
         return response
 
+    def request_base64(self, text: str) -> str:
+        import base64
+        response = self.request(text)
+        return base64.b64encode(response.audio_content).decode('utf-8')
 
 if __name__ == "__main__":
     text = "안녕하세요. TTS test 입니다."

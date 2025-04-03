@@ -3,7 +3,6 @@ import random
 import queue
 import threading
 import configparser
-import base64
 
 from string import ascii_uppercase
 from datetime import datetime, timezone

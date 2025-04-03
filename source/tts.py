@@ -1,4 +1,5 @@
 import configparser
+import base64
 
 from google.oauth2 import service_account
 from google.cloud import texttospeech
@@ -40,7 +41,6 @@ class TTS():
         return response
 
     def request_base64(self, text: str) -> str:
-        import base64
         response = self.request(text)
         return base64.b64encode(response.audio_content).decode('utf-8')
 

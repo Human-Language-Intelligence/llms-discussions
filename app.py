@@ -67,9 +67,9 @@ def get_timestamp_utc() -> str:
 
 def get_random_time():
     # 베타 분포에서 랜덤한 값을 얻음
-    value = random.betavariate(1, 3)
-    # 값을 0.01과 0.7 사이의 범위로 스케일링
-    return 0.01 + value * (0.35 - 0.01)
+    value = random.betavariate(2, 5)
+    # 평균 0.01~0.015
+    return 0.005 + value * 0.02 
 
 
 def generate_unique_code(length):
@@ -225,7 +225,6 @@ def send_gemini_response(gemini_response, room):
         else:
             log_event("Send", "Gemini", sofar_message)
             gemini.append_history("assistant", gemini_response[:i+1])
-
 
         time.sleep(get_random_time())
 

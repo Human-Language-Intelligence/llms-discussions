@@ -131,39 +131,44 @@ def send_gpt_response(chatgpt_response, room):
         # 만들고 있던 응답을 여기서 삭제
         if gpt_response_in_progress.get(room) == False:
             gpt.append_history("assistant", chatgpt_response[:i+1])
-            time.sleep(1)
-            if len(sofar_message) > 120:
+            # time.sleep(1)
+            """if len(sofar_message) > 120:
                 content["is_typing"] = False
                 content["message"] = content["message"] + "..."
                 socketio.emit("gpt-message", content, room=room)
                 log_event("Send", "ChatGPT", content["message"])
-                return
+                return"""
             socketio.emit("clear-gpt-response", room=room)
-            time.sleep(1)
+            # time.sleep(1)
             return
 
         sofar_message = chatgpt_response[:i+1]
-        content["message"] = sofar_message
 
-        if i == len(chatgpt_response) - 1:
-            content["is_typing"] = False
-            gpt_response_in_progress[room] = False
-
-            try:
-                tts_response = tts_client.request(content["message"])
-                audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
-                content["audio_base64"] = audio_base64
-            except Exception as e:
-                print("TTS error:", e)
+        if len(sofar_message.strip()) < 5:
+            continue
+        
+        try:
+            tts_response = tts_client.request(sofar_message)
+            audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
+        except Exception as e:
+            print("TTS error:", e)
+            audio_base64 = None
+        
+        content.update({
+            "message": sofar_message,
+            "is_typing": i < len(chatgpt_response) - 1,
+            "audio_base64": audio_base64
+        })
 
         socketio.emit("gpt-message", content, room=room)
 
-        time.sleep(get_random_time())
-        if content["is_typing"] == False:
+        if content["is_typing"]:
+            log_event("Keystroke", "ChatGPT", sofar_message)
+        else:
+            log_event("Send", "ChatGPT", sofar_message)
             gpt.append_history("assistant", chatgpt_response[:i+1])
-            log_event("Send", "ChatGPT", content["message"])
-        elif content["is_typing"] == True:
-            log_event("Keystroke", "ChatGPT", content["message"])
+        
+        time.sleep(get_random_time())
 
         # Interrupt
         # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정

@@ -56,8 +56,9 @@ gpt_lock = threading.Lock()
 # gpt 응답 생성 여부 추적
 gpt_response_in_progress = {}
 gemini_response_in_progress = {}
-# user_prompt_point = {}
 rooms = {}
+
+gpt_finished_events = {}
 auto_stop = 0
 
 
@@ -98,10 +99,13 @@ def worker():
         chatgpt_response, room = work_queue.get()
         if chatgpt_response is None:
             break
-        content = send_gpt_response(chatgpt_response, room)
+        content= send_gpt_response(chatgpt_response, room)
         work_queue.task_done()
-        Geminimessage(content, room)
 
+        # GPT 응답 전송 완료 후, 자동으로 Gemini 응답 생성
+        with gpt_lock:
+            gemini_response = gemini.get_response(content["message"])
+            gemini_work_queue.put((gemini_response, room))
 
 def gemini_worker():
     global auto_stop
@@ -111,8 +115,11 @@ def gemini_worker():
             break
         content = send_gemini_response(gemini_response, room)
         gemini_work_queue.task_done()
-        GPTmessage(content, room)
 
+        # Gemini 응답 전송 완료 후, 자동으로 GPT 응답 생성
+        with gpt_lock:
+            chatgpt_response = gpt.get_response(content["message"])
+            work_queue.put((chatgpt_response, room))
 
 worker_thread = threading.Thread(target=worker, daemon=True)
 worker_thread.start()
@@ -122,7 +129,7 @@ gemini_worker_thread.start()
 
 
 def send_gpt_response(chatgpt_response, room):
-    content = {
+    """content = {
         "name": "ChatGPT",
         "timestamp": get_timestamp_utc(),
         "is_typing": True,
@@ -169,13 +176,35 @@ def send_gpt_response(chatgpt_response, room):
         # Interrupt
         # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
         #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
-        #        Geminimessage(content, room)
+        #        Geminimessage(content, room)"""
+    
+    # 동기화를 위해 해당 방의 이벤트를 초기화
+    if room in gpt_finished_events:
+        gpt_finished_events[room].clear()
+    full_response = "".join(chatgpt_response)
+    try:
+        tts_response = tts_F.request(full_response)
+        audio_base64 = base64.b64encode(tts_response).decode('utf-8')
+    except Exception as e:
+        print("TTS error:", e)
+        audio_base64 = ""
+    content = {
+        "name": "ChatGPT",
+        "timestamp": get_timestamp_utc(),
+        "message": full_response,
+        "is_typing": False,
+        "audio_base64": audio_base64
+    }
+    # LLM1 응답과 TTS 생성 완료 후 전송
+    socketio.emit("gpt-message", content, room=room)
+    if room in gpt_finished_events:
+        gpt_finished_events[room].set()
 
     return content
 
 
 def send_gemini_response(gemini_response, room):
-    content = {
+    """content = {
         "name": "Gemini",
         "timestamp": get_timestamp_utc(),
         "is_typing": True,
@@ -221,7 +250,27 @@ def send_gemini_response(gemini_response, room):
         # Interrupt
         # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
         #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
-        #        GPTmessage(content, room)
+        #        GPTmessage(content, room)"""
+    
+    # LLM1 응답 완료 신호가 날 때까지 대기
+    if room in gpt_finished_events:
+        gpt_finished_events[room].wait()
+    full_response = "".join(gemini_response)
+    try:
+        tts_response = tts_M.request(full_response)
+        audio_base64 = base64.b64encode(tts_response).decode('utf-8')
+    except Exception as e:
+        print("TTS error:", e)
+        audio_base64 = ""
+    content = {
+        "name": "Gemini",
+        "timestamp": get_timestamp_utc(),
+        "message": full_response,
+        "is_typing": False,
+        "audio_base64": audio_base64
+    }
+    socketio.emit("gemini-message", content, room=room)
+    
     return content
 
 
@@ -412,7 +461,8 @@ def sendTopic(data):
         room = session.get("room")
         if room not in rooms:
             return
-
+        
+        gpt_finished_events[room] = threading.Event()
         content = {
             "name": "User",
             "message": '토론 주제는 "'+topic+'" 입니다.',

@@ -1,10 +1,11 @@
-import base64
-import string
 import time
 import random
 import queue
 import threading
 import configparser
+import base64
+import string
+
 import flask
 import flask_socketio
 
@@ -44,6 +45,7 @@ socketio = flask_socketio.SocketIO(app)
 
 gpt = ChatGPT(gpt_history)
 gemini = Gemini(gemini_history)
+
 tts_M = TTS(3)
 tts_F = TTS(1)
 
@@ -57,6 +59,7 @@ gemini_response_in_progress = {}
 rooms = {}
 
 gpt_finished_events = {}
+gemini_finished_events = {}
 auto_stop = 0
 
 
@@ -175,8 +178,6 @@ def send_gpt_response(chatgpt_response, room):
         # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
         #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
         #        Geminimessage(content, room)"""
-    
-    # 동기화를 위해 해당 방의 이벤트를 초기화
     if room in gpt_finished_events:
         gpt_finished_events[room].clear()
     full_response = "".join(chatgpt_response)
@@ -193,11 +194,14 @@ def send_gpt_response(chatgpt_response, room):
         "is_typing": False,
         "audio_base64": audio_base64
     }
-    # LLM1 응답과 TTS 생성 완료 후 전송
+    # GPT 응답과 TTS 생성 완료 후 전송
     socketio.emit("gpt-message", content, room=room)
-    if room in gpt_finished_events:
-        gpt_finished_events[room].set()
 
+    if room in gpt_finished_events:
+        # 중복 클리어를 피하기 위해 다시 초기화
+        gpt_finished_events[room].clear()
+        gpt_finished_events[room].wait()
+        
     return content
 
 
@@ -251,9 +255,6 @@ def send_gemini_response(gemini_response, room):
         #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
         #        GPTmessage(content, room)"""
     
-    # LLM1 응답 완료 신호가 날 때까지 대기
-    if room in gpt_finished_events:
-        gpt_finished_events[room].wait()
     full_response = "".join(gemini_response)
     try:
         tts_response = tts_M.request(full_response)
@@ -269,9 +270,24 @@ def send_gemini_response(gemini_response, room):
         "audio_base64": audio_base64
     }
     socketio.emit("gemini-message", content, room=room)
+    if room in gemini_finished_events:
+        gemini_finished_events[room].clear()
+        gemini_finished_events[room].wait()
     
     return content
 
+@socketio.on("tts_finished")
+def handle_tts_finished(data):
+    room = data.get("room")
+    side = data.get("side")
+    if room is None or side is None:
+        return
+    if side == "ChatGPT":
+        if room in gpt_finished_events:
+            gpt_finished_events[room].set()
+    elif side == "Gemini":
+        if room in gemini_finished_events:
+            gemini_finished_events[room].set()
 
 @socketio.on("gpt-message")
 def GPTmessage(data, room):
@@ -462,6 +478,8 @@ def sendTopic(data):
             return
         
         gpt_finished_events[room] = threading.Event()
+        gemini_finished_events[room] = threading.Event()
+        
         content = {
             "name": "User",
             "message": '토론 주제는 "'+topic+'" 입니다.',

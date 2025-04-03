@@ -2,6 +2,7 @@
 {% block content %}
 <section class="message-box ">
   <h2>토론 주제: {{ topic }}</h2>
+  <div id="room-container" data-room="{{ code }}"></div>
   <div class="messages scrollbar" id="messages">
     {% for msg in messages %}
     <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
@@ -28,6 +29,9 @@
   var socketIO = io();
   var isLive = true; // default to live
 
+  const roomCode = document.getElementById("room-container").getAttribute("data-room");
+  console.log("room code:", roomCode);
+
   const messageBoxes = document.getElementById("messages");
   const user1Name = "Gemini"; //"{{ session['name'] }}";
   const user2Name = "The Other User"; // TODO
@@ -50,9 +54,9 @@
   const sendMessage = () => {
     const message = document.getElementById("message");
     if (message.value.trim() !== "") {
-      socketio.emit("message", { data: message.value });
+      socketIO.emit("message", { data: message.value });
       if (!isLive) {
-        socketio.emit("typing", { is_typing: false, message: "" });
+        socketIO.emit("typing", { is_typing: false, message: "" });
       }
       message.value = "";
     }
@@ -230,7 +234,7 @@
   messageBoxes.addEventListener("input", function () {
     const typingText = messageBoxes.value.trim();
     if (isLive) {
-      socketio.emit("typing", {
+      socketIO.emit("typing", {
         is_typing: typingText !== "",
         message: typingText,
       });
@@ -282,7 +286,8 @@
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
         audio.onended = function() {
-          socketio.emit("tts_finished", { side: data.name, room: "{{ code }}" });
+          socketIO.emit("tts_finished", { side: "ChatGPT", room: roomCode });
+          console.log("room code:", roomCode);
         };
       }
     }
@@ -302,11 +307,13 @@
         existingTypingMessage.remove();
       }
       if (data.audio_base64) {
-        const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+        const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
         audio.onended = function() {
-          socketio.emit("tts_finished", { side: data.name, room: "{{ code }}" });
+          socketIO.emit("tts_finished", { side: "Gemini", room: roomCode });
+          console.log("room code:", roomCode);
         };
+
       }
     }
   });

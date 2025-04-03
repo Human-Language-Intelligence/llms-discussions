@@ -130,63 +130,18 @@ gemini_worker_thread.start()
 
 
 def send_gpt_response(chatgpt_response, room):
-    """content = {
-        "name": "ChatGPT",
-        "timestamp": get_timestamp_utc(),
-        "is_typing": True,
-    }
-
-    for i, partial_response in enumerate(chatgpt_response):
-        # 만들고 있던 응답을 여기서 삭제
-        if gpt_response_in_progress.get(room) == False:
-            gpt.append_history("assistant", chatgpt_response[:i+1])
-            time.sleep(1)
-            if len(sofar_message) > 120:
-                content["is_typing"] = False
-                content["message"] = content["message"] + "..."
-                socketio.emit("gpt-message", content, room=room)
-                log_event("Send", "ChatGPT", content["message"])
-                return
-            socketio.emit("clear-gpt-response", room=room)
-            time.sleep(1)
-            return
-
-        sofar_message = chatgpt_response[:i+1]
-        content["message"] = sofar_message
-
-        if i == len(chatgpt_response) - 1:
-            content["is_typing"] = False
-            gpt_response_in_progress[room] = False
-
-            try:
-                tts_response = tts_F.request(content["message"])
-                audio_base64 = base64.b64encode(tts_response)
-                content["audio_base64"] = audio_base64.decode('utf-8')
-            except Exception as e:
-                print("TTS error:", e)
-
-        socketio.emit("gpt-message", content, room=room)
-        time.sleep(get_random_time())
-
-        if content["is_typing"] == False:
-            gpt.append_history("assistant", chatgpt_response[:i+1])
-            log_event("Send", "ChatGPT", content["message"])
-        elif content["is_typing"] == True:
-            log_event("Keystroke", "ChatGPT", content["message"])
-
-        # Interrupt
-        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
-        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
-        #        Geminimessage(content, room)"""
     if room in gpt_finished_events:
         gpt_finished_events[room].clear()
+        
     full_response = "".join(chatgpt_response)
+    
     try:
         tts_response = tts_F.request(full_response)
         audio_base64 = base64.b64encode(tts_response).decode('utf-8')
     except Exception as e:
         print("TTS error:", e)
         audio_base64 = ""
+        
     content = {
         "name": "ChatGPT",
         "timestamp": get_timestamp_utc(),
@@ -194,6 +149,7 @@ def send_gpt_response(chatgpt_response, room):
         "is_typing": False,
         "audio_base64": audio_base64
     }
+    
     # GPT 응답과 TTS 생성 완료 후 전송
     socketio.emit("gpt-message", content, room=room)
 
@@ -206,62 +162,15 @@ def send_gpt_response(chatgpt_response, room):
 
 
 def send_gemini_response(gemini_response, room):
-    """content = {
-        "name": "Gemini",
-        "timestamp": get_timestamp_utc(),
-        "is_typing": True,
-    }
-
-    for i, partial_response in enumerate(gemini_response):
-        # 만들고 있던 응답을 여기서 삭제
-        if gemini_response_in_progress.get(room) == False:
-            gemini.append_history("assistant", gemini_response[:i+1])
-            time.sleep(1)
-            if len(sofar_message) > 120:
-                content["is_typing"] = False
-                content["message"] = content["message"] + "..."
-                socketio.emit("gemini-message", content, room=room)
-                log_event("Send", "Gemini", content["message"])
-                return
-            socketio.emit("clear-gemini-response", room=room)
-            time.sleep(1)
-            return
-
-        sofar_message = gemini_response[:i+1]
-        content["message"] = sofar_message
-
-        if i == len(gemini_response) - 1:
-            content["is_typing"] = False
-            gemini_response_in_progress[room] = False
-
-            try:
-                tts_response = tts_M.request(content["message"])
-                audio_base64 = base64.b64encode(tts_response)
-                content["audio_base64"] = audio_base64.decode('utf-8')
-            except Exception as e:
-                print("TTS error:", e)
-
-        socketio.emit("gemini-message", content, room=room)
-        time.sleep(get_random_time())
-
-        if content["is_typing"] == False:
-            gemini.append_history("assistant", gemini_response[:i+1])
-            log_event("Send", "Gemini", content["message"])
-        elif content["is_typing"] == True:
-            log_event("Keystroke", "Gemini", content["message"])
-
-        # Interrupt
-        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
-        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
-        #        GPTmessage(content, room)"""
-    
     full_response = "".join(gemini_response)
+    
     try:
         tts_response = tts_M.request(full_response)
         audio_base64 = base64.b64encode(tts_response).decode('utf-8')
     except Exception as e:
         print("TTS error:", e)
         audio_base64 = ""
+        
     content = {
         "name": "Gemini",
         "timestamp": get_timestamp_utc(),
@@ -269,7 +178,9 @@ def send_gemini_response(gemini_response, room):
         "is_typing": False,
         "audio_base64": audio_base64
     }
+    
     socketio.emit("gemini-message", content, room=room)
+    
     if room in gemini_finished_events:
         gemini_finished_events[room].clear()
         gemini_finished_events[room].wait()

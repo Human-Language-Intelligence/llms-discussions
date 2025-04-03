@@ -67,9 +67,9 @@ def get_timestamp_utc() -> str:
 
 def get_random_time():
     # 베타 분포에서 랜덤한 값을 얻음
-    value = random.betavariate(2, 5)
-    # 평균 0.01~0.015
-    return 0.005 + value * 0.02 
+    value = random.betavariate(1, 3)
+    # 값을 0.01과 0.7 사이의 범위로 스케일링
+    return 0.01 + value * (0.35 - 0.01)
 
 
 def generate_unique_code(length):
@@ -97,9 +97,10 @@ def worker():
         chatgpt_response, room = work_queue.get()
         if chatgpt_response is None:
             break
-        
-        send_gpt_response(chatgpt_response, room)
+        content = send_gpt_response(chatgpt_response, room)
         work_queue.task_done()
+        Geminimessage(content, room)
+
 
 def gemini_worker():
     global auto_stop
@@ -107,9 +108,9 @@ def gemini_worker():
         gemini_response, room = gemini_work_queue.get()
         if gemini_response is None:
             break
-        
-        send_gemini_response(gemini_response, room)
+        content = send_gemini_response(gemini_response, room)
         gemini_work_queue.task_done()
+        GPTmessage(content, room)
 
 
 worker_thread = threading.Thread(target=worker, daemon=True)
@@ -117,6 +118,7 @@ worker_thread.start()
 
 gemini_worker_thread = threading.Thread(target=gemini_worker, daemon=True)
 gemini_worker_thread.start()
+
 
 def send_gpt_response(chatgpt_response, room):
     content = {
@@ -127,7 +129,7 @@ def send_gpt_response(chatgpt_response, room):
 
     for i, partial_response in enumerate(chatgpt_response):
         # 만들고 있던 응답을 여기서 삭제
-        """if gpt_response_in_progress.get(room) == False:
+        if gpt_response_in_progress.get(room) == False:
             gpt.append_history("assistant", chatgpt_response[:i+1])
             time.sleep(1)
             if len(sofar_message) > 120:
@@ -138,36 +140,37 @@ def send_gpt_response(chatgpt_response, room):
                 return
             socketio.emit("clear-gpt-response", room=room)
             time.sleep(1)
-            return"""
+            return
 
-        """if not gpt_response_in_progress.get(room, False):
-            gpt.append_history("assistant", chatgpt_response[:i+1])
-            socketio.emit("clear-gpt-response", room=room)
-            return"""
-
-        sofar = chatgpt_response[:i+1]
+        sofar_message = chatgpt_response[:i+1]
+        content["message"] = sofar_message
 
         if i == len(chatgpt_response) - 1:
+            content["is_typing"] = False
+            gpt_response_in_progress[room] = False
+
             try:
-                audio_base64 = tts_client.request_base64(sofar)
+                tts_response = tts_client.request(content["message"])
+                audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
                 content["audio_base64"] = audio_base64
             except Exception as e:
                 print("TTS error:", e)
 
-            content.update({"message": sofar, "is_typing": False})
-            socketio.emit("gpt-message", content, room=room)
-            gpt.append_history("assistant", chatgpt_response)
-
-            break
-
-        content.update({"message": sofar, "is_typing": True})
         socketio.emit("gpt-message", content, room=room)
+
         time.sleep(get_random_time())
+        if content["is_typing"] == False:
+            gpt.append_history("assistant", chatgpt_response[:i+1])
+            log_event("Send", "ChatGPT", content["message"])
+        elif content["is_typing"] == True:
+            log_event("Keystroke", "ChatGPT", content["message"])
 
-    # Gemini의 응답을 트리거
-    Geminimessage({"name": "ChatGPT", "message": chatgpt_response, "is_typing": False}, room)
+        # Interrupt
+        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
+        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
+        #        Geminimessage(content, room)
 
-    return
+    return content
 
 
 def send_gemini_response(gemini_response, room):
@@ -179,7 +182,7 @@ def send_gemini_response(gemini_response, room):
 
     for i, partial_response in enumerate(gemini_response):
         # 만들고 있던 응답을 여기서 삭제
-        """if gemini_response_in_progress.get(room) == False:
+        if gemini_response_in_progress.get(room) == False:
             gemini.append_history("assistant", gemini_response[:i+1])
             time.sleep(1)
             if len(sofar_message) > 120:
@@ -190,30 +193,35 @@ def send_gemini_response(gemini_response, room):
                 return
             socketio.emit("clear-gemini-response", room=room)
             time.sleep(1)
-            return"""
+            return
 
-        sofar = gemini_response[:i+1]
+        sofar_message = gemini_response[:i+1]
+        content["message"] = sofar_message
 
         if i == len(gemini_response) - 1:
+            content["is_typing"] = False
+            gemini_response_in_progress[room] = False
+
             try:
-                audio_base64 = tts_client.request_base64(sofar)
+                tts_response = tts_client.request(content["message"])
+                audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
                 content["audio_base64"] = audio_base64
             except Exception as e:
                 print("TTS error:", e)
 
-            content.update({"message": sofar, "is_typing": False})
-            socketio.emit("gemini-message", content, room=room)
-            gemini.append_history("assistant", gemini_response)
-            break
-
-        content.update({"message": sofar, "is_typing": True})
         socketio.emit("gemini-message", content, room=room)
         time.sleep(get_random_time())
+        if content["is_typing"] == False:
+            gemini.append_history("assistant", gemini_response[:i+1])
+            log_event("Send", "Gemini", content["message"])
+        elif content["is_typing"] == True:
+            log_event("Keystroke", "Gemini", content["message"])
 
-    # ChatGPT의 응답을 트리거
-    GPTmessage({"name": "Gemini", "message": gemini_response, "is_typing": False}, room)
-
-    return
+        # Interrupt
+        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
+        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
+        #        GPTmessage(content, room)
+    return content
 
 
 @socketio.on("gpt-message")

@@ -15,6 +15,9 @@ class TTS():
             2: 'ko-KR-Standard-B',
             3: 'ko-KR-Standard-C',
             4: 'ko-KR-Standard-D',
+            5: 'ko-KR-Chirp3-HD-Aoede',
+            6: 'ko-KR-Chirp3-HD-Orus',
+
         }
         self.config = {
             "language": "ko-KR",

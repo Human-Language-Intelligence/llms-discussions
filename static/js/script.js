@@ -1,31 +1,34 @@
 var socketio = io();
+var isLive = true; // default to live
 
 const messages = document.getElementById("messages");
 const user1Name = "Gemini"; //"{{ session['name'] }}";
 const user2Name = "The Other User"; // TODO
 
-socketio.on("connect", function () {
-  var userTopic = "{{ topic }}";
-  socketio.emit("sendTopic", { topic: userTopic });
-});
+// const scrollDown = () => {
+//   messages.scrollTop = messages.scrollHeight;
+// };
+const scrollDown = () => {
+  // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
+  const threshold = 100; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
+  const positionFromBottom =
+    messages.scrollHeight - (messages.scrollTop + messages.clientHeight);
 
-var isLive = true; // default to live
-// function toggleButtonText() {
-//   var button = document.getElementById("live-btn");
-//   if (button.innerHTML === "Live") {
-//     button.innerHTML = "UnLive";
-//     button.classList.remove("live");
-//     button.classList.add("unlive");
-//     isLive = false;
-//     socketio.emit("live-toggle", { status: "UnLive" });
-//   } else {
-//     button.innerHTML = "Live";
-//     button.classList.remove("unlive");
-//     button.classList.add("live");
-//     isLive = true;
-//     socketio.emit("live-toggle", { status: "Live" });
-//   }
-// }
+  if (positionFromBottom < threshold) {
+    messages.scrollTop = messages.scrollHeight;
+  }
+};
+
+const sendMessage = () => {
+  const message = document.getElementById("message");
+  if (message.value.trim() !== "") {
+    socketio.emit("message", { data: message.value });
+    if (!isLive) {
+      socketio.emit("typing", { is_typing: false, message: "" });
+    }
+    message.value = "";
+  }
+};
 
 const createMessage = (name, msg) => {
   const isAdmin = name === "admin";
@@ -119,7 +122,9 @@ const showTyping = (name, typingText) => {
   } else {
     a = "반대";
   }
+
   const formattedtyping = typingText.replace(/\n/g, "<br>");
+
   const typingContent = `
     <div class="message typing-message ${userClass} ${name}-typing-message">
       <div class="bubble" style="align-self: ${textAlignStyle};">
@@ -144,6 +149,77 @@ const showTyping = (name, typingText) => {
 
   scrollDown();
 };
+
+const createNotification = (msg) => {
+  const content = `
+      <div class="notification">
+        <p>${msg}</p>
+      </div>
+    `;
+  messages.innerHTML += content;
+  messages.scrollTop = messages.scrollHeight;
+};
+
+function simulateTypingRemoval(element) {
+  const messageElement = element.querySelector(".bubble p");
+  const typingText = messageElement.innerText;
+  const words = typingText.split(" ");
+  const wordCount = words.length;
+
+  // Simulate removing words with a slower delay
+  const delay = 100; // Adjust the delay to control the speed
+  let i = wordCount;
+
+  function removeWord() {
+    if (i >= 0) {
+      const updatedText = words.slice(0, i).join(" ");
+      messageElement.innerText = updatedText;
+      i--;
+      setTimeout(removeWord, delay);
+    }
+  }
+
+  removeWord();
+}
+
+// function toggleButtonText() {
+//   var button = document.getElementById("live-btn");
+//   if (button.innerHTML === "Live") {
+//     button.innerHTML = "UnLive";
+//     button.classList.remove("live");
+//     button.classList.add("unlive");
+//     isLive = false;
+//     socketio.emit("live-toggle", { status: "UnLive" });
+//   } else {
+//     button.innerHTML = "Live";
+//     button.classList.remove("unlive");
+//     button.classList.add("live");
+//     isLive = true;
+//     socketio.emit("live-toggle", { status: "Live" });
+//   }
+// }
+
+messages.addEventListener("input", function () {
+  const typingText = messages.value.trim();
+  if (isLive) {
+    socketio.emit("typing", {
+      is_typing: typingText !== "",
+      message: typingText,
+    });
+  }
+});
+
+messages.addEventListener("keydown", function (event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    sendMessage();
+  }
+});
+
+socketio.on("connect", function () {
+  var userTopic = "{{ topic }}";
+  socketio.emit("sendTopic", { topic: userTopic });
+});
 
 socketio.on("message", (data) => {
   if (data.is_typing) {
@@ -211,82 +287,7 @@ socketio.on("clear-gemini-response", () => {
   }
 });
 
-function simulateTypingRemoval(element) {
-  const messageElement = element.querySelector(".bubble p");
-  const typingText = messageElement.innerText;
-  const words = typingText.split(" ");
-  const wordCount = words.length;
-
-  // Simulate removing words with a slower delay
-  const delay = 100; // Adjust the delay to control the speed
-  let i = wordCount;
-
-  function removeWord() {
-    if (i >= 0) {
-      const updatedText = words.slice(0, i).join(" ");
-      messageElement.innerText = updatedText;
-      i--;
-      setTimeout(removeWord, delay);
-    }
-  }
-
-  removeWord();
-}
-
-const createNotification = (msg) => {
-  const content = `
-      <div class="notification">
-        <p>${msg}</p>
-      </div>
-    `;
-  messages.innerHTML += content;
-  messages.scrollTop = messages.scrollHeight;
-};
-
 socketio.on("notification", function (data) {
   const message = data.message;
   createNotification(message);
-});
-
-const sendMessage = () => {
-  const message = document.getElementById("message");
-  if (message.value.trim() !== "") {
-    socketio.emit("message", { data: message.value });
-    if (!isLive) {
-      socketio.emit("typing", { is_typing: false, message: "" });
-    }
-    message.value = "";
-  }
-};
-
-// const scrollDown = () => {
-//   messages.scrollTop = messages.scrollHeight;
-// };
-const scrollDown = () => {
-  // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
-  const threshold = 100; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
-  const positionFromBottom =
-    messages.scrollHeight - (messages.scrollTop + messages.clientHeight);
-
-  if (positionFromBottom < threshold) {
-    messages.scrollTop = messages.scrollHeight;
-  }
-};
-
-const messageInput = document.getElementById("message");
-
-messageInput.addEventListener("input", function () {
-  const typingText = messageInput.value.trim();
-  if (isLive) {
-    socketio.emit("typing", {
-      is_typing: typingText !== "",
-      message: typingText,
-    });
-  }
-});
-messageInput.addEventListener("keydown", function (event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    sendMessage();
-  }
 });

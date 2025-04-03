@@ -9,11 +9,11 @@ with open('config.ini', 'r') as f:
 
 
 class TTS():
-    def __init__(self) -> None:
+    def __init__(self, voice=3) -> None:
         self.config = {
             "language": "ko-KR",
-            "voice": texttospeech.SsmlVoiceGender.NEUTRAL,
-            "format": texttospeech.AudioEncoding.MP3
+            "voice": voice,
+            "format": texttospeech.AudioEncoding.OGG_OPUS
         }
 
         self._client = texttospeech.TextToSpeechClient(
@@ -29,7 +29,7 @@ class TTS():
             audio_encoding=self.config['format']
         )
 
-    def request(self, text):
+    def request(self, text: str) -> bytes:
         synthesis_input = texttospeech.SynthesisInput(text=text)
         response = self._client.synthesize_speech(
             input=synthesis_input,
@@ -37,14 +37,15 @@ class TTS():
             audio_config=self.audio_config
         )
 
-        return response
+        return response.audio_content
 
 
 if __name__ == "__main__":
     text = "안녕하세요. TTS test 입니다."
 
-    tts = TTS()
+    tts = TTS(1)
+    tts.config['format'] = texttospeech.AudioEncoding.MP3
     response = tts.request(text)
 
     with open("output.mp3", "wb") as out:
-        out.write(response.audio_content)
+        out.write(response)

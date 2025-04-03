@@ -147,8 +147,8 @@ def send_gpt_response(chatgpt_response, room):
 
             try:
                 tts_response = tts_F.request(content["message"])
-                audio_base64 = base64.b64encode(tts_response).decode('utf-8')
-                content["audio_base64"] = audio_base64
+                audio_base64 = base64.b64encode(tts_response)
+                content["audio_base64"] = audio_base64.decode('utf-8')
             except Exception as e:
                 print("TTS error:", e)
 
@@ -200,8 +200,8 @@ def send_gemini_response(gemini_response, room):
 
             try:
                 tts_response = tts_M.request(content["message"])
-                audio_base64 = base64.b64encode(tts_response).decode('utf-8')
-                content["audio_base64"] = audio_base64
+                audio_base64 = base64.b64encode(tts_response)
+                content["audio_base64"] = audio_base64.decode('utf-8')
             except Exception as e:
                 print("TTS error:", e)
 

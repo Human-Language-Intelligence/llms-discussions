@@ -19,14 +19,6 @@ from source.tts import TTS
 CONFIG = configparser.ConfigParser()
 CONFIG.read("config.ini")
 
-app = flask.Flask(__name__)
-app.secret_key = CONFIG['flask']['SECRET_KEY']
-socketio = flask_socketio.SocketIO(app)
-
-tts_M = TTS(3)
-tts_F = TTS(1)
-
-# "You are a debater with opposing views."}]
 gpt_history = [
     {
         "role": "system",
@@ -46,8 +38,14 @@ gemini_history = [
     },
 ]
 
+app = flask.Flask(__name__)
+app.secret_key = CONFIG['flask']['SECRET_KEY']
+socketio = flask_socketio.SocketIO(app)
+
 gpt = ChatGPT(gpt_history)
 gemini = Gemini(gemini_history)
+tts_M = TTS(3)
+tts_F = TTS(1)
 
 work_queue = queue.Queue()
 gemini_work_queue = queue.Queue()
@@ -94,31 +92,28 @@ def log_event(event_type, username, additional_info=""):
 
 def worker():
     global auto_stop
-    while auto_stop < 10:
-        chatgpt_response, room = work_queue.get()
-        if chatgpt_response is None:
-            break
-        content = send_gpt_response(chatgpt_response, room)
-        work_queue.task_done()
-        Geminimessage(content, room)
+
+    while True:
+        while auto_stop < 10:
+            chatgpt_response, room = work_queue.get()
+            if chatgpt_response is None:
+                break
+            content = send_gpt_response(chatgpt_response, room)
+            work_queue.task_done()
+            Geminimessage(content, room)
 
 
 def gemini_worker():
     global auto_stop
-    while auto_stop < 10:
-        gemini_response, room = gemini_work_queue.get()
-        if gemini_response is None:
-            break
-        content = send_gemini_response(gemini_response, room)
-        gemini_work_queue.task_done()
-        GPTmessage(content, room)
 
-
-worker_thread = threading.Thread(target=worker, daemon=True)
-worker_thread.start()
-
-gemini_worker_thread = threading.Thread(target=gemini_worker, daemon=True)
-gemini_worker_thread.start()
+    while True:
+        while auto_stop < 10:
+            gemini_response, room = gemini_work_queue.get()
+            if gemini_response is None:
+                break
+            content = send_gemini_response(gemini_response, room)
+            gemini_work_queue.task_done()
+            GPTmessage(content, room)
 
 
 def send_gpt_response(chatgpt_response, room):
@@ -158,8 +153,8 @@ def send_gpt_response(chatgpt_response, room):
                 print("TTS error:", e)
 
         socketio.emit("gpt-message", content, room=room)
-
         time.sleep(get_random_time())
+
         if content["is_typing"] == False:
             gpt.append_history("assistant", chatgpt_response[:i+1])
             log_event("Send", "ChatGPT", content["message"])
@@ -167,8 +162,8 @@ def send_gpt_response(chatgpt_response, room):
             log_event("Keystroke", "ChatGPT", content["message"])
 
         # Interrupt
-        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
-        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
+        # if len(content['message']) > 100: # 쌍방채팅 여기서 조정
+        #    if random.random() < 0.01: # if random.randint(0, 1) == 1:
         #        Geminimessage(content, room)
 
     return content
@@ -212,6 +207,7 @@ def send_gemini_response(gemini_response, room):
 
         socketio.emit("gemini-message", content, room=room)
         time.sleep(get_random_time())
+
         if content["is_typing"] == False:
             gemini.append_history("assistant", gemini_response[:i+1])
             log_event("Send", "Gemini", content["message"])
@@ -219,19 +215,21 @@ def send_gemini_response(gemini_response, room):
             log_event("Keystroke", "Gemini", content["message"])
 
         # Interrupt
-        # if len(content['message']) > 100: ############# 쌍방채팅 여기서 조정
-        #    if random.random() < 0.01:#if random.randint(0, 1) == 1:
+        # if len(content['message']) > 100: # 쌍방채팅 여기서 조정
+        #    if random.random() < 0.01: # if random.randint(0, 1) == 1:
         #        GPTmessage(content, room)
     return content
 
 
 @socketio.on("gpt-message")
 def GPTmessage(data, room):
+    global auto_stop
+
     if data == None:
         return
     if data["name"] == "admin":
         return
-    global auto_stop
+
     auto_stop += 1
     recent_user_typing = data["message"]
 
@@ -285,11 +283,13 @@ def GPTmessage(data, room):
 
 @socketio.on("gemini-message")
 def Geminimessage(data, room):
+    global auto_stop
+
     if data == None:
         return
     if data["name"] == "admin":
         return
-    global auto_stop
+
     auto_stop += 1
     recent_user_typing = data["message"]
 
@@ -465,13 +465,34 @@ def disconnect():
     print(f"{name} has left the room {room}")
 
 
+@app.route("/room")
+def room():
+    global auto_stop
+
+    room = flask.session.get("room")
+    topic = flask.session.get("topic")
+    if room is None or topic is None or room not in rooms:
+        return flask.redirect(flask.url_for("home"))
+
+    auto_stop = 0
+    return flask.render_template(
+        "room.html",
+        code=room,
+        topic=topic,
+        messages=rooms[room]["messages"]
+    )
+
+
 @app.route("/", methods=["POST", "GET"])
 def home():
     flask.session.clear()
     if flask.request.method == "POST":
         topic = flask.request.form.get("topic")
         if not topic:
-            return flask.render_template("home.html", error="Please enter a topic.")
+            return flask.render_template(
+                "home.html",
+                error="Please enter a topic."
+            )
 
         room = generate_unique_code(2)
         rooms[room] = {"members": 0, "messages": []}
@@ -484,20 +505,12 @@ def home():
     return flask.render_template("home.html")
 
 
-@app.route("/room")
-def room():
-    room = flask.session.get("room")
-    topic = flask.session.get("topic")
-    if room is None or topic is None or room not in rooms:
-        return flask.redirect(flask.url_for("home"))
-
-    return flask.render_template(
-        "room.html",
-        code=room,
-        topic=topic,
-        messages=rooms[room]["messages"]
-    )
-
+threads = {
+    'gpt': threading.Thread(target=worker, daemon=True),
+    'gemini': threading.Thread(target=gemini_worker, daemon=True)
+}
+for thread in threads.values():
+    thread.start()
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=80, debug=True)

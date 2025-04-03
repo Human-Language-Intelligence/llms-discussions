@@ -281,6 +281,9 @@
       if (data.audio_base64) {
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
+        audio.onended = function() {
+          socketio.emit("tts_finished", { side: data.name, room: "{{ code }}" });
+        };
       }
     }
   });
@@ -301,6 +304,9 @@
       if (data.audio_base64) {
         const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
         audio.play();
+        audio.onended = function() {
+          socketio.emit("tts_finished", { side: data.name, room: "{{ code }}" });
+        };
       }
     }
   });

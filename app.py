@@ -202,6 +202,13 @@ def send_gemini_response(gemini_response, room):
             content["is_typing"] = False
             gemini_response_in_progress[room] = False
 
+            try:
+                tts_response = tts_client.request(content["message"])
+                audio_base64 = base64.b64encode(tts_response.audio_content).decode('utf-8')
+                content["audio_base64"] = audio_base64
+            except Exception as e:
+                print("TTS error:", e)
+
         socketio.emit("gemini-message", content, room=room)
         time.sleep(get_random_time())
         if content["is_typing"] == False:

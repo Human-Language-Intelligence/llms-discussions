@@ -186,10 +186,6 @@
     if (data.is_typing) {
       showTyping("ChatGPT", data.message);
     } else {
-      if (data.audio_base64) {
-        const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
-        audio.play();
-      }
       createGPTMessage(data.message);
       const isUser1 = data.name === user1Name;
       const userClass = isUser1 ? 'user1' : 'user2'
@@ -204,10 +200,6 @@
     if (data.is_typing) {
       showTyping("Gemini", data.message);
     } else {
-      if (data.audio_base64) {
-        const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
-        audio.play();
-      }
       createGeminiMessage(data.message);
       const isUser1 = data.name === user1Name;
       const userClass = isUser1 ? 'user1' : 'user2'

@@ -3,6 +3,7 @@ import random
 import queue
 import threading
 import configparser
+import base64
 
 from string import ascii_uppercase
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ from flask_socketio import join_room, leave_room, send, SocketIO
 
 from source.gemini import Gemini
 from source.chatgpt import ChatGPT
+from source.tts import TTS
 
 
 CONFIG = configparser.ConfigParser()
@@ -20,6 +22,8 @@ CONFIG.read("config.ini")
 app = Flask(__name__)
 app.secret_key = CONFIG['flask']['SECRET_KEY']
 socketio = SocketIO(app)
+
+tts_client = TTS()
 
 # "You are a debater with opposing views."}]
 gpt_history = [

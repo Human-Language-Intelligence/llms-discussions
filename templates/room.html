@@ -1,32 +1,33 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="message-box ">
-  <h2>토론 주제: {{ topic }}</h2>
-  <div id="room-container" data-room="{{ code }}"></div>
-  <div class="messages scrollbar" id="messages">
-    {% for msg in messages %}
-    <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
-      <div class="bubble">
-        <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
-        <p>{{ msg.message }}</p>
+<div class="container">
+  <section class="message-box">
+    <h2>토론 주제: {{ topic }}</h2>
+    <div id="room-container" data-room="{{ code }}"></div>
+    <div class="messages scrollbar" id="messages">
+      {% for msg in messages %}
+      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
+        <div class="bubble">
+          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
+          <p>{{ msg.message }}</p>
+        </div>
+        <span class="timestamp">{{ msg.timestamp }}</span>
       </div>
-      <span class="timestamp">{{ msg.timestamp }}</span>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
-  <!-- <div class="inputs">
+    <!-- <div class="inputs">
     <input type="text" rows="3" placeholder="Message" name="message" id="message" />
     <button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
     <button type="button" name="live" id="live-btn" onClick="toggleButtonText()">Live</button>
   </div> -->
-  <div id="new-message-alert" class="new-message-alert hidden" onclick="scrollDownAndHideAlert()">
-    📩 새 대화 확인하기
-  </div>
-</section>
-
-<section class="home-button-container">
-  <a href="{{ url_for('home') }}" class="home-button">다른 주제로 토론 시작</a>
-</section>
+    <div id="new-message-alert" class="new-message-alert hidden" onclick="scrollDownAndHideAlert()">
+      📩 새 대화 확인하기
+    </div>
+  </section>
+  <section class="home-button-container">
+    <a href="{{ url_for('home') }}" class="home-button">다른 주제로 토론 시작</a>
+  </section>
+</div>
 
 <script type="module">
   var socketIO = io();
@@ -149,7 +150,7 @@
       scrollDown();
     } else {
       showNewMessageAlert();
-}
+    }
   };
 
   const createGeminiMessage = (geminiResponse) => {
@@ -339,7 +340,7 @@
       if (data.audio_base64) {
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
-        audio.onended = function() {
+        audio.onended = function () {
           socketIO.emit("tts_finished", { side: "ChatGPT", room: roomCode });
           console.log("room code:", roomCode);
         };
@@ -363,7 +364,7 @@
       if (data.audio_base64) {
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
-        audio.onended = function() {
+        audio.onended = function () {
           socketIO.emit("tts_finished", { side: "Gemini", room: roomCode });
           console.log("room code:", roomCode);
         };

@@ -1,18 +1,32 @@
-body {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Open Sans', 'Noto Sans KR', sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
   display: flex;
-  font-family: 'Open Sans', 'Noto Sans KR';
-  /*font-family: 'Arial', sans-serif;*/
   align-items: center;
   justify-content: center;
   height: 100vh;
-  margin: 0;
 }
 
-* {
-  font-family: inherit;
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .message-box {
+  text-align: left;
   border-radius: 8px;
   background-color: #ffffff;
   /*#f7f7f7;*/
@@ -110,9 +124,9 @@ body {
 
 .timestamp {
   font-size: 0.8em;
+  font-style: italic;
   color: #888;
   margin-top: 8px;
-  font-style: italic;
   /* align-self: flex-end; */
 }
 
@@ -138,7 +152,7 @@ body {
   border-radius: 8px;
   border: 1px solid #ccc;
   padding: 12px;
-  font-size: 16px;
+  font-size: 1.2rem;
 }
 
 #send-btn {
@@ -149,7 +163,7 @@ body {
   padding: 12px 20px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 1.2rem;
 }
 
 #live-btn {
@@ -160,32 +174,32 @@ body {
   padding: 12px 20px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 1.2rem;
 }
 
 #create-btn {
+  height: 40px;
   margin-left: 4px;
+  padding: 6px 16px;
+  border-radius: 8px;
   border: none;
   background-color: #007bff;
   color: white;
-  padding: 6px 16px;
-  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
-  height: 40px;
+  font-size: 0.8rem;
 }
 
 #input-topic {
+  padding: 6px 16px 6px 12px;
+  width: 240px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
   background-color: #f4f4f4;
   color: gray;
   /*#bcbcbc*/
   ;
-  border: none;
-  font-size: 12px;
-  padding: 6px 16px 6px 12px;
-  border-radius: 4px;
-  width: 240px;
-  height: 28px;
+  font-size: 0.8rem;
 }
 
 .notification {
@@ -277,7 +291,6 @@ body {
   border: 2px solid #007bff;
 }
 
-
 .new-message-alert {
   position: fixed;
   bottom: 80px;
@@ -287,7 +300,7 @@ body {
   color: #fff;
   padding: 10px 20px;
   border-radius: 20px;
-  font-size: 14px;
+  font-size: 0.9rem;
   cursor: pointer;
   z-index: 1000;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);

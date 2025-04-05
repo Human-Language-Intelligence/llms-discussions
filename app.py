@@ -366,7 +366,7 @@ def handle_live_toggle(data):
     name = "User"  # session.get("name")
     content = {
         "name": "User",  # session.get("name"),
-        "message": f"{name} has gone {data["status"]}",
+        "message": f"{name} has gone {data['status']}",
         "timestamp": get_timestamp_utc(),
     }
 
@@ -460,9 +460,20 @@ def room():
 @app.route("/", methods=["POST", "GET"])
 def home():
     flask.session.clear()
+    TOPIC_POOL = [
+        "AI가 인간을 대체할 수 있는가?",
+        "화성 이주는 현실적인가?",
+        "온라인 교육이 오프라인 교육을 대체할 수 있을까?",
+        "기후 변화는 개인의 책임인가?",
+        "NFT는 예술의 미래인가?",
+        "프라이버시 vs 보안: 무엇이 더 중요한가?",
+        "자율주행차의 윤리적 책임은 누구에게 있는가?",
+    ]
+
     if flask.request.method == "POST":
         topic = flask.request.form.get("topic")
         if not topic:
+            random_topics = random.sample(TOPIC_POOL, 3)
             return flask.render_template(
                 "home.html",
                 error="Please enter a topic."
@@ -475,8 +486,9 @@ def home():
         flask.session["topic"] = topic
 
         return flask.redirect(flask.url_for("room"))
-
-    return flask.render_template("home.html")
+    # GET 요청일 때
+    random_topics = random.sample(TOPIC_POOL, 3)
+    return flask.render_template("home.html", random_topics=random_topics)
 
 
 THREADS = {

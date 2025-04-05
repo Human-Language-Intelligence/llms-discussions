@@ -276,3 +276,24 @@ body {
   color: #007bff;
   border: 2px solid #007bff;
 }
+
+
+.new-message-alert {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.3s ease;
+}
+
+.new-message-alert.hidden {
+  display: none;
+}

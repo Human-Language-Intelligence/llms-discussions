@@ -4,6 +4,7 @@ import threading
 import configparser
 import base64
 import string
+import json
 
 import flask
 import flask_socketio
@@ -19,26 +20,9 @@ from source.tts import TTS
 CONFIG = configparser.ConfigParser()
 CONFIG.read("config.ini")
 
-HISTORY = {
-    "gpt": [
-        {
-            "role": "system",
-            "content": "You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
-        }
-    ],
-    "gemini": [
-        {
-            "role": "user",
-            "parts": [
-                {"text": "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."}
-            ],
-        },
-        {
-            "role": "model",
-            "parts": [{"text": "이해했습니다."}],
-        },
-    ]
-}
+
+TOPIC_POOL = json.loads(CONFIG["default"]["TOPIC"])
+HISTORY = json.loads(CONFIG["default"]["HISTORY"])
 STATUS = {
     "count": 0,
     "rooms": {},
@@ -460,15 +444,6 @@ def room():
 @app.route("/", methods=["POST", "GET"])
 def home():
     flask.session.clear()
-    TOPIC_POOL = [
-        "AI가 인간을 대체할 수 있는가?",
-        "화성 이주는 현실적인가?",
-        "온라인 교육이 오프라인 교육을 대체할 수 있을까?",
-        "기후 변화는 개인의 책임인가?",
-        "NFT는 예술의 미래인가?",
-        "프라이버시 vs 보안: 무엇이 더 중요한가?",
-        "자율주행차의 윤리적 책임은 누구에게 있는가?",
-    ]
 
     if flask.request.method == "POST":
         topic = flask.request.form.get("topic")

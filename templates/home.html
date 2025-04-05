@@ -9,6 +9,15 @@
       <input type="text" placeholder="주제를 입력하세요" name="topic" id="input-topic" value="{{ topic }}" />
       <button type="submit" name="create" id="create-btn">토론 시작!</button>
     </div>
+
+    <div align="center" style="margin-top:40px;">
+      <h3 align="center" style="margin-top:5px">이런 토론 주제도 가능해요!</h3>
+      <ul style="list-style: none; padding:0; margin-top:10px;">
+        {% for t in random_topics %}
+        <li style="margin:8px 0; font-weight:500; cursor:pointer;" onclick="fillInput('{{ t }}')">{{ t }}</li>
+        {% endfor %}
+      </ul>
+    </div>
     <!-- <div class="join">
       <input type="text" placeholder="Room Code" name="code" value="{{code}}" />
       <button type="submit" name="join">Join a Room</button>
@@ -23,4 +32,14 @@
     {% endif %}
   </form>
 </section>
+
+<script>
+  function fillInput(topic) {
+    const input = document.getElementById("input-topic");
+    if (input) {
+      input.value = topic;
+      input.focus();
+    }
+  }
+</script>
 {% endblock %}

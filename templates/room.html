@@ -29,7 +29,7 @@
   </section>
 </div>
 
-<script type="module">
+<script>
   var socketIO = io();
   var isLive = true; // default to live
 
@@ -41,31 +41,6 @@
   const user2Name = "The Other User"; // TODO
 
   let isUserNearBottom = true;
-
-  function showNewMessageAlert() {
-    const alertBox = document.getElementById("new-message-alert");
-    if (alertBox) alertBox.classList.remove("hidden");
-  }
-
-  function hideNewMessageAlert() {
-    const alertBox = document.getElementById("new-message-alert");
-    if (alertBox) alertBox.classList.add("hidden");
-  }
-
-  function scrollDownAndHideAlert() {
-    setTimeout(() => {
-      const messageBoxes = document.getElementById("messages"); // 다시 한 번 안전하게 가져오기
-      const lastMessage = messageBoxes?.lastElementChild;
-
-      if (lastMessage) {
-        lastMessage.scrollIntoView({ behavior: "smooth", block: "end" });
-      } else {
-        messageBoxes.scrollTop = messageBoxes.scrollHeight;
-      }
-
-      hideNewMessageAlert();
-    }, 50); // 약간의 delay 줘서 DOM 렌더 완료 후 작동
-  }
 
   // const scrollDown = () => {
   //   messages.scrollTop = messages.scrollHeight;
@@ -109,19 +84,20 @@
       `;
     } else {
       content = `
-    <div class="message ${userClass}">
-      <div class="bubble">
-        <div class="profile">
-          <img src="./static/User.png" alt="user" class="logo">
-          <span class="name">${name}</span>
+      <div class="message ${userClass}">
+        <div class="bubble">
+          <div class="profile">
+            <img src="./static/User.png" alt="user" class="logo">
+            <span class="name">${name}</span>
+          </div>
+          <p>${msg}</p>
         </div>
-        <p>${msg}</p>
+        <span class="timestamp">${new Date().toLocaleString()}</span>
       </div>
-      <span class="timestamp">${new Date().toLocaleString()}</span>
-    </div>
-    `;
+      `;
     }
-    messageBoxes.innerHTML += content;
+    messageBoxes.insertAdjacentHTML("beforeend", content);
+
     if (isUserNearBottom) {
       scrollDown();
     } else {
@@ -134,7 +110,7 @@
 
     const formattedResponse = chatgptResponse.replace(/\n/g, "<br>");
     content += `
-  <div class="message chatgpt-response">
+    <div class="message chatgpt-response">
       <div class="bubble">
           <div class="profile">
             <img src="./static/ChatGPT.png" alt="ChatGPT" class="logo">
@@ -143,9 +119,10 @@
           <p>${formattedResponse}</p>
       </div>
       <span class="timestamp">${new Date().toLocaleString()}</span>
-  </div>
-  `;
-    messageBoxes.innerHTML += content;
+    </div>
+    `;
+    messageBoxes.insertAdjacentHTML("beforeend", content);
+
     if (isUserNearBottom) {
       scrollDown();
     } else {
@@ -169,7 +146,8 @@
         <span class="timestamp gemini">${new Date().toLocaleString()}</span>
     </div>
     `;
-    messageBoxes.innerHTML += content;
+    messageBoxes.insertAdjacentHTML("beforeend", content);
+
     if (isUserNearBottom) {
       scrollDown();
     } else {
@@ -191,35 +169,29 @@
       }
       return;
     }
-    let a = "";
-    if (name == "ChatGPT") {
-      a = "찬성";
-    } else {
-      a = "반대";
-    }
 
-    const formattedtyping = typingText.replace(/\n/g, "<br>");
-
+    const sideLabel = name === "ChatGPT" ? "찬성" : "반대";
+    const formattedTyping = typingText.replace(/\n/g, "<br>");
     const typingContent = `
     <div class="message typing-message ${userClass} ${name}-typing-message">
       <div class="bubble" style="align-self: ${textAlignStyle};">
         <div class="profile">
           <img src="./static/${name}.png" class="logo">
-          <span class="name">${name} - ${a} 측</span>
+          <span class="name">${name} - ${sideLabel} 측</span>
         </div>
-        <p>${formattedtyping}</p>
+        <p>${formattedTyping}</p>
       </div>
       <span class="timestamp"> ${name} is typing ... </span>
     </div>
-  `;
-
+    `;
     const existingTypingMessage = document.querySelector(
       `.${userClass}.${name}-typing-message`
     );
+
     if (existingTypingMessage) {
       existingTypingMessage.innerHTML = typingContent;
     } else {
-      messageBoxes.innerHTML += typingContent;
+      messageBoxes.insertAdjacentHTML("beforeend", typingContent);
     }
 
     scrollDown();
@@ -231,9 +203,34 @@
         <p>${msg}</p>
       </div>
     `;
-    messageBoxes.innerHTML += content;
+    messageBoxes.insertAdjacentHTML("beforeend", content);
     messageBoxes.scrollTop = messageBoxes.scrollHeight;
   };
+
+  function showNewMessageAlert() {
+    const alertBox = document.getElementById("new-message-alert");
+    if (alertBox) alertBox.classList.remove("hidden");
+  }
+
+  function hideNewMessageAlert() {
+    const alertBox = document.getElementById("new-message-alert");
+    if (alertBox) alertBox.classList.add("hidden");
+  }
+
+  function scrollDownAndHideAlert() {
+    setTimeout(() => {
+      const messageBoxes = document.getElementById("messages"); // 다시 한 번 안전하게 가져오기
+      const lastMessage = messageBoxes?.lastElementChild;
+
+      if (lastMessage) {
+        lastMessage.scrollIntoView({ behavior: "smooth", block: "end" });
+      } else {
+        messageBoxes.scrollTop = messageBoxes.scrollHeight;
+      }
+
+      hideNewMessageAlert();
+    }, 50); // 약간의 delay 줘서 DOM 렌더 완료 후 작동
+  }
 
   function simulateTypingRemoval(element) {
     const messageElement = element.querySelector(".bubble p");
@@ -273,6 +270,13 @@
   //     socketIO.emit("live-toggle", { status: "Live" });
   //   }
   // }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const alertBox = document.getElementById("new-message-alert");
+    if (alertBox) {
+      alertBox.addEventListener("click", scrollDownAndHideAlert);
+    }
+  });
 
   messageBoxes.addEventListener("scroll", () => {
     const threshold = 100;
@@ -394,13 +398,6 @@
   socketIO.on("notification", function (data) {
     const message = data.message;
     createNotification(message);
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const alertBox = document.getElementById("new-message-alert");
-    if (alertBox) {
-      alertBox.addEventListener("click", scrollDownAndHideAlert);
-    }
   });
 </script>
 {% endblock %}

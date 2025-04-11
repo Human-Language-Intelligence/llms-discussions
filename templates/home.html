@@ -1,13 +1,36 @@
 {% extends 'base.html' %}
 {% block content %}
+<!-- 에러 메시지 toast 영역 -->
+<div id="error-toast" style="display:none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  background-color: #ff4d4f; color: white; padding: 12px 24px; border-radius: 8px; z-index: 1000; font-weight: 500;">
+</div>
+
 <div class="container">
   <section>
     <h2>AI들의 토론을 지켜보세요!</h2>
     <h4>ChatGPT와 Gemini의 토론이 시작됩니다.</h4>
   </section>
+
   <section>
-    <h3>관심있는 주제를 입력해주세요.</h3>
     <form method="post" class="buttons">
+      <section>
+        <h3>찬성/반대 측 모델을 선택하세요</h3>
+        <div class="model-select">
+          <label>찬성 (Pro): 
+            <select name="model_pro">
+              <option value="chatgpt" {% if model_pro == 'chatgpt' %}selected{% endif %}>ChatGPT</option>
+              <option value="gemini" {% if model_pro == 'gemini' %}selected{% endif %}>Gemini</option>
+            </select>
+          </label>
+          <label style="margin-left: 16px;">반대 (Con): 
+            <select name="model_con">
+              <option value="gemini" {% if model_con == 'gemini' %}selected{% endif %}>Gemini</option>
+              <option value="chatgpt" {% if model_con == 'chatgpt' %}selected{% endif %}>ChatGPT</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <h3>관심있는 주제를 입력해주세요.</h3>
       <input type="text" placeholder="주제를 입력하세요" name="topic" id="input-topic" value="{{ topic }}" />
       <button type="submit" name="create" id="create-btn">토론 시작!</button>
       <!-- <div class="join">
@@ -17,20 +40,19 @@
       <div class="container center">
         <button type="submit" name="create" class="create-btn">토론 시작!</button>
       </div> -->
-      {% if error %}
+      <!-- {% if error %}
       <ul>
         <li>{{error}}</li>
       </ul>
-      {% endif %}
-    </form>
-  </section>
-  <section>
+      {% endif %} -->
     <h3>이런 토론 주제도 가능해요!</h3>
     <ul style="list-style: none; padding:0;">
       {% for t in random_topics %}
       <li style="margin:8px 0; font-weight:500; cursor:pointer;" onclick="fillInput('{{ t }}')">{{ t }}</li>
       {% endfor %}
     </ul>
+  </section>
+    </form>
   </section>
 </div>
 
@@ -42,5 +64,18 @@
       input.focus();
     }
   }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const errorMsg = "{{ error | default('') }}";
+    if (errorMsg) {
+      const toast = document.getElementById("error-toast");
+      toast.innerText = errorMsg;
+      toast.style.display = "block";
+
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 3000);
+    }
+  });
 </script>
 {% endblock %}

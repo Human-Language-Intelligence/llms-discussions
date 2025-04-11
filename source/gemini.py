@@ -24,14 +24,16 @@ class Gemini():
         self.chat = None
         self.conversations = []
 
+        self.connect_session()
+
         if system_prompt:
             # self.convert_history(history)
             self.append_history(
                 role='user',
                 text=system_prompt
             )
-        self.connect_session()
-        self.connect_chat()
+        else:
+            self.connect_chat()
 
     def connect_session(self) -> None:
         self.client = generative_models.GenerativeModel(

@@ -22,7 +22,6 @@ CONFIG.read("config.ini")
 
 
 TOPIC_POOL = json.loads(CONFIG["default"]["TOPIC"])
-HISTORY = json.loads(CONFIG["default"]["HISTORY"])
 STATUS = {
     "count": 0,
     "rooms": {},
@@ -43,8 +42,8 @@ app = flask.Flask(__name__)
 app.secret_key = CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 
-gpt = ChatGPT(HISTORY["gpt"])
-gemini = Gemini(HISTORY["gemini"])
+gpt = ChatGPT(CONFIG["default"]["HISTORY.POSITIVE"])
+gemini = Gemini(CONFIG["default"]["HISTORY.NEGATIVE"])
 
 tts_m = TTS(3)
 tts_f = TTS(1)

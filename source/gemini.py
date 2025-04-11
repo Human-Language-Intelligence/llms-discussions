@@ -10,7 +10,7 @@ with open('config.ini', 'r') as f:
 
 
 class Gemini():
-    def __init__(self, history: list = []) -> None:
+    def __init__(self, system_prompt: str = None) -> None:
         aiplatform.init(
             project=_CONFIG['google']['GCP.PROJECT_ID'],
             location=_CONFIG['google']['GCP.LOCATION'],
@@ -24,7 +24,12 @@ class Gemini():
         self.chat = None
         self.conversations = []
 
-        self.convert_history(history)
+        if system_prompt:
+            # self.convert_history(history)
+            self.append_history(
+                role='user',
+                text=system_prompt
+            )
         self.connect_session()
         self.connect_chat()
 
@@ -81,20 +86,7 @@ class Gemini():
 
 
 if __name__ == "__main__":
-    history = [
-        {
-            "role": "user",
-            "parts": [
-                {"text": "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."}
-            ],
-        },
-        {
-            "role": "model",
-            "parts": [
-                {"text": "이해했습니다."}
-            ],
-        },
-    ]
+    history = "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
 
     gemini = Gemini(history)
     gemini.append_history('assistant', '학교는 연구를 위한 곳입니다.')

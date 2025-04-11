@@ -10,7 +10,7 @@ import flask
 import flask_socketio
 
 from datetime import datetime, timezone
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 
 from source.gemini import Gemini
 from source.chatgpt import ChatGPT

@@ -77,6 +77,7 @@ class Gemini():
         history = self.convert_content(content)
 
         self.conversations.append(history)
+        self.chat = self.client.start_chat(history=self.conversations)
 
 
 if __name__ == "__main__":

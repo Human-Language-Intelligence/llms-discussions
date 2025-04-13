@@ -25,6 +25,20 @@ main {
   text-align: center;
 }
 
+#error-toast {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ff4d4f;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  z-index: 1000;
+  font-weight: 500;
+}
+
 .message-box {
   text-align: left;
   border-radius: 8px;

@@ -27,6 +27,8 @@ class ChatGPT():
 
     def get_response(self, text: str = None) -> str:
         completion = self.client.chat.completions
+        if text:
+            self.append_history(role='user', text=text)
         response = completion.create(
             messages=self.conversations,
             model=self.model_name
@@ -50,7 +52,7 @@ class ChatGPT():
 
 if __name__ == "__main__":
     history = "You will take a position in favor of the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
-    
+
     gpt = ChatGPT(history)
     gpt.append_history("user", "학교는 연구를 위한 공간입니다.")
     response = gpt.get_response()

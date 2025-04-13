@@ -16,14 +16,14 @@
       <div class="model-select">
         <label>찬성 (Pro):
           <select name="model_pro">
-            <option value="chatgpt" {% if model_pro=='chatgpt' %}selected{% endif %}>ChatGPT</option>
+            <option value="chatgpt" {% if model_pro=='gpt' %}selected{% endif %}>ChatGPT</option>
             <option value="gemini" {% if model_pro=='gemini' %}selected{% endif %}>Gemini</option>
           </select>
         </label>
         <label style="margin-left: 16px;">반대 (Con):
           <select name="model_con">
             <option value="gemini" {% if model_con=='gemini' %}selected{% endif %}>Gemini</option>
-            <option value="chatgpt" {% if model_con=='chatgpt' %}selected{% endif %}>ChatGPT</option>
+            <option value="chatgpt" {% if model_con=='gpt' %}selected{% endif %}>ChatGPT</option>
           </select>
         </label>
       </div>

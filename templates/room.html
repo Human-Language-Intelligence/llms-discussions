@@ -37,7 +37,7 @@
   console.log("room code:", roomCode);
 
   const messageBoxes = document.getElementById("messages");
-  const user1Name = "Gemini"; //"{{ session['name'] }}";
+  const user1Name = "gemini"; //"{{ session['name'] }}";
   const user2Name = "The Other User"; // TODO
 
   let isUserNearBottom = true;
@@ -170,7 +170,7 @@
       return;
     }
 
-    const sideLabel = name === "ChatGPT" ? "찬성" : "반대";
+    const sideLabel = name === "gpt" ? "찬성" : "반대";
     const formattedTyping = typingText.replace(/\n/g, "<br>");
     const typingContent = `
     <div class="message typing-message ${userClass} ${name}-typing-message">
@@ -330,7 +330,7 @@
 
   socketIO.on("gpt-message", (data) => {
     if (data.is_typing) {
-      showTyping("ChatGPT", data.message);
+      showTyping("gpt", data.message);
     } else {
       createGPTMessage(data.message);
       const isUser1 = data.name === user1Name;
@@ -354,7 +354,7 @@
 
   socketIO.on("gemini-message", (data) => {
     if (data.is_typing) {
-      showTyping("Gemini", data.message);
+      showTyping("gemini", data.message);
     } else {
       createGeminiMessage(data.message);
       const isUser1 = data.name === user1Name;
@@ -369,7 +369,7 @@
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
         audio.onended = function () {
-          socketIO.emit("tts_finished", { side: "gemini", room: roomCode });
+          socketIO.emit("tts-finished", { side: "gemini", room: roomCode });
           console.log("room code:", roomCode);
         };
 

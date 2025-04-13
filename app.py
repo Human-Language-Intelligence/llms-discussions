@@ -109,7 +109,7 @@ def gemini_worker():
             STATUS["gpt"]["queue"].put((chatgpt_response, room))
 
 
-def handle_user_typing(data, side, room):
+def handle_user_typing(side, data, room):
     """
     유저가 타이핑 중일 때 GPT와 Gemini 응답을 처리하는 함수.
     """
@@ -125,7 +125,6 @@ def handle_user_typing(data, side, room):
             STATUS[side]["progressing"][room] = False
             response = generate_response(side, recent_user_typing, room)
             return response
-
     else:
         # 메시지 전송이 끝났을 때 처리
         if STATUS[side]["progressing"].get(room, False):
@@ -157,30 +156,23 @@ def generate_response(side, recent_user_typing, room):
     return response
 
 
-def send_response(model_name, response_data, room):
-    """
-    공통 응답 생성 및 전송 함수.
-    model_name: 'ChatGPT' 또는 'Gemini'
-    response_data: 모델에서 받은 응답 데이터
-    room: 현재 방
-    tts_function: 해당 모델의 TTS 함수 (ChatGPT: tts_f.request, Gemini: tts_m.request)
-    """
+def send_response(side, response_data, room):
     full_response = "".join(response_data)
 
-    if model_name == "gpt":
+    if side == "gpt":
         tts_function = tts_f.request
-    elif model_name == "gemini":
+    elif side == "gemini":
         tts_function = tts_m.request
 
     try:
         tts_response = tts_function(full_response)
         audio_base64 = base64.b64encode(tts_response)
     except Exception as e:
-        print(f"TTS error for {model_name}:", e)
+        print(f"TTS error for {side}:", e)
         audio_base64 = ""
 
     content = {
-        "name": model_name,
+        "name": side,
         "timestamp": get_timestamp_utc(),
         "message": full_response,
         "is_typing": False,
@@ -188,12 +180,12 @@ def send_response(model_name, response_data, room):
     }
 
     # 응답 전송
-    socketio.emit(f"{model_name}-message", content, room=room)
+    socketio.emit(f"{side}-message", content, room=room)
 
     # 상태 업데이트
-    if room in STATUS[model_name]["finished"]:
-        STATUS[model_name]["finished"][room].clear()
-        STATUS[model_name]["finished"][room].wait()
+    if room in STATUS[side]["finished"]:
+        STATUS[side]["finished"][room].clear()
+        STATUS[side]["finished"][room].wait()
 
     return content
 
@@ -214,18 +206,20 @@ def handle_tts_finished(data):
 def gpt_message(data, room):
     if data is None or data.get("name") == "admin":
         return
+    print("GPT message received:", data)
 
     STATUS["count"] += 1
-    handle_user_typing(data, "gpt", room)
+    handle_user_typing("gpt", data, room)
 
 
 @socketio.on("gemini-message")
 def gemini_message(data, room):
     if data is None or data.get("name") == "admin":
         return
+    print("Gemini message received:", data)
 
     STATUS["count"] += 1
-    handle_user_typing(data, "gemini", room)
+    handle_user_typing("gemini", data, room)
 
 
 @socketio.on("message")
@@ -248,11 +242,11 @@ def handle_message(data):
 
     # 메시지 저장 및 브로드캐스트
     STATUS["rooms"][room]["messages"].append(content)
-    socketio.emit("message", content, room=room)
 
     # 로그 기록 및 GPT 응답 호출
+    socketio.emit("message", content, room=room)
+    gpt_message(content, room=room)
     log_event("Send", name, message_text)
-    gpt_message(content, room)
 
 
 @socketio.on("typing")
@@ -262,23 +256,20 @@ def handle_typing(data):
         return
 
     name = flask.session.get("name", "User")
-    message = data.get("message", "").strip()
+    message_text = data.get("data", "").strip()
     content = {
         "name": name,
-        "message": message,
+        "message": message_text,
         "is_typing": True,
     }
 
     # 실시간 타이핑 메시지 전송
     socketio.emit("message", content, room=room)
 
-    # 키 입력 로그 기록
-    if message:
-        log_event("Keystroke", name, message)
-
     # 일정 길이 이상 메시지면 GPT 반응 확률적으로 호출
-    if len(message) > 70 and random.randint(0, 1) == 1:
-        gpt_message(content, room)
+    if len(message_text) > 70 and random.randint(0, 1) == 1:
+        gpt_message(content, room=room)
+    log_event("Keystroke", name, message_text)
 
 
 @socketio.on("live-toggle")
@@ -289,7 +280,6 @@ def handle_live_toggle(data):
 
     name = flask.session.get("name", "User")
     status = data.get("status", "offline")
-
     content = {
         "name": name,
         "message": f"{name} has gone {status}",
@@ -297,7 +287,7 @@ def handle_live_toggle(data):
     }
 
     socketio.emit("notification", content, room=room)
-    log_event("toggle", name, status)
+    log_event("Toggle", name, status)
 
 
 @socketio.on("send-topic")
@@ -323,8 +313,7 @@ def handle_send_topic(data):
     STATUS["rooms"][room]["messages"].append(content)
 
     # GPT 처리 함수 호출
-    gpt_message(content, room)
-    # 로그 기록
+    gpt_message(content, room=room)
     log_event("Send", name, content["message"])
 
 
@@ -343,12 +332,11 @@ def handle_connect(auth):
         "message": f"{name} has entered the room",
         "timestamp": get_timestamp_utc(),
     }
+    STATUS["rooms"][room]["members"] += 1
 
     flask_socketio.join_room(room)
     socketio.emit("notification", content, room=room)
-    STATUS["rooms"][room]["members"] += 1
-
-    print(f"{name} joined room {room}")
+    log_event("Connect", name, content["message"])
 
 
 @socketio.on("disconnect")
@@ -358,12 +346,14 @@ def handle_disconnect():
 
     if room:
         flask_socketio.leave_room(room)
+
+        content = {
+            "name": name,
+            "message": "has left the room"
+        }
         # 퇴장 메시지 전송
         flask_socketio.send(
-            {
-                "name": name,
-                "message": "has left the room"
-            },
+            content,
             to=room
         )
 
@@ -371,7 +361,7 @@ def handle_disconnect():
             STATUS["rooms"][room]["members"] -= 1
             if STATUS["rooms"][room]["members"] <= 0:
                 del STATUS["rooms"][room]
-        print(f"{name} has left the room {room}")
+        log_event("Disconnect", name, content["message"])
 
 
 @app.route("/room")
@@ -383,7 +373,6 @@ def room():
         return flask.redirect(flask.url_for("home"))
 
     STATUS["count"] = 0
-    print(STATUS)
 
     return flask.render_template(
         "room.html",

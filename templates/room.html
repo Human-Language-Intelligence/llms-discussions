@@ -309,7 +309,7 @@
 
   socketIO.on("connect", function () {
     var userTopic = "{{ topic }}";
-    socketIO.emit("sendTopic", { topic: userTopic });
+    socketIO.emit("send-topic", { topic: userTopic });
   });
 
   socketIO.on("message", (data) => {
@@ -345,7 +345,7 @@
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
         audio.onended = function () {
-          socketIO.emit("tts_finished", { side: "ChatGPT", room: roomCode });
+          socketIO.emit("tts-finished", { side: "gpt", room: roomCode });
           console.log("room code:", roomCode);
         };
       }
@@ -369,7 +369,7 @@
         const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
         audio.play();
         audio.onended = function () {
-          socketIO.emit("tts_finished", { side: "Gemini", room: roomCode });
+          socketIO.emit("tts_finished", { side: "gemini", room: roomCode });
           console.log("room code:", roomCode);
         };
 

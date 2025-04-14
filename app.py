@@ -22,31 +22,207 @@ CONFIG.read("config.ini")
 
 
 TOPIC_POOL = json.loads(CONFIG["default"]["TOPIC"])
-STATUS = {
-    "count": 0,
-    "rooms": {},
-    "lock": threading.Lock(),
-    "gpt": {
-        "queue": queue.Queue(),
-        "progressing": {},
-        "finished": {}
-    },
-    "gemini": {
-        "queue": queue.Queue(),
-        "progressing": {},
-        "finished": {}
-    }
-}
 
 app = flask.Flask(__name__)
 app.secret_key = CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 
-gpt = ChatGPT(CONFIG["default"]["HISTORY.POSITIVE"])
-gemini = Gemini(CONFIG["default"]["HISTORY.NEGATIVE"])
 
-tts_m = TTS(3)
-tts_f = TTS(1)
+class Room:
+    def __init__(self, room_id):
+        self.room_id = room_id
+        self.lock = threading.Lock()
+        self.members = 0
+        self.count = 0
+        self.messages = []
+        self.threads = {}
+        self.status = {
+            "gpt": {
+                "queue": queue.Queue(),
+                "finished": threading.Event(),
+                "progressing": ''
+            },
+            "gemini": {
+                "queue": queue.Queue(),
+                "finished": threading.Event(),
+                "progressing": ''
+            }
+        }
+
+        # 외부 의존성 주입
+        self.gpt = ChatGPT(CONFIG["default"]["HISTORY.POSITIVE"])
+        self.gemini = Gemini(CONFIG["default"]["HISTORY.NEGATIVE"])
+        self.tts_m = TTS(3)
+        self.tts_f = TTS(1)
+
+    def handle_user_typing(self, side, data):
+        """
+        유저가 타이핑 중일 때 GPT와 Gemini 응답을 처리하는 함수.
+        """
+        recent_user_typing = data.get("message", "").strip()
+        other_side = "gemini" if side == "gpt" else "gpt"
+
+        if data["is_typing"]:
+            # 진행 중인 문장 유사도 비교
+            if fuzz.ratio(
+                self.status[other_side]["progressing"],
+                recent_user_typing
+            ) < 60:
+                self.status[side]["progressing"] = ''
+                response = self.generate_response(side, recent_user_typing)
+                return response
+        else:
+            if self.status[side]["progressing"]:
+                if fuzz.ratio(
+                    self.status[other_side]["progressing"],
+                    recent_user_typing
+                ) > 60:
+                    return
+                self.status[side]["progressing"] = ''
+                response = self.generate_response(side, recent_user_typing)
+                return response
+            # 진행 중인 상태가 아니라면 새 응답을 생성
+            response = self.generate_response(side, recent_user_typing)
+            return response
+
+    def generate_response(self, side, data):
+        """
+        GPT 또는 Gemini 모델에 맞는 응답을 생성하고 상태를 업데이트하는 함수.
+        """
+        if side == "gpt":
+            response = self.gpt.get_response(data)
+            self.status["gpt"]["progressing"] = response
+            self.status["gpt"]["queue"].put(response)
+            self.status["gemini"]["progressing"] = data
+        elif side == "gemini":
+            response = self.gemini.get_response(data)
+            self.status["gemini"]["progressing"] = response
+            self.status["gemini"]["queue"].put(response)
+            self.status["gpt"]["progressing"] = data
+
+        return response
+
+    def send_response(self, side, data):
+        data = "".join(data)
+        try:
+            if side == "gpt":
+                tts_response = self.tts_f.request(data)
+            elif side == "gemini":
+                tts_response = self.tts_m.request(data)
+            audio_base64 = base64.b64encode(tts_response)
+        except Exception as e:
+            print(f"TTS error for {side}:", e)
+            audio_base64 = ""
+
+        content = {
+            "name": side,
+            "is_typing": False,
+            "timestamp": get_timestamp_utc(),
+            "message": data,
+            "audio_base64": audio_base64.decode("utf-8")
+        }
+
+        # 응답 전송
+        socketio.emit(f"{side}-message", content, room=self.room_id)
+
+        # 상태 업데이트
+        self.status[side]["finished"].clear()
+        self.status[side]["finished"].wait()
+        self.count += 1
+
+        return content
+
+    def worker(self):
+        while self.count < 10:
+            response = self.status["gpt"]["queue"].get()
+            if not response:
+                break
+            content = self.send_response("gpt", response)
+            self.status["gpt"]["queue"].task_done()
+
+            with self.lock:
+                gemini_response = self.gemini.get_response(content["message"])
+                self.status["gemini"]["queue"].put(gemini_response)
+
+    def gemini_worker(self):
+        while self.count < 10:
+            response = self.status["gemini"]["queue"].get()
+            if response is None:
+                break
+            content = self.send_response("gemini", response)
+            self.status["gemini"]["queue"].task_done()
+
+            with self.lock:
+                chatgpt_response = self.gpt.get_response(content["message"])
+                self.status["gpt"]["queue"].put(chatgpt_response)
+
+    def start_threads(self):
+        self.threads = {
+            "gpt": threading.Thread(target=self.worker, daemon=True),
+            "gemini": threading.Thread(target=self.gemini_worker, daemon=True)
+        }
+        for thread in self.threads.values():
+            thread.start()
+
+    def stop_threads(self):
+        for thread in self.threads.values():
+            thread.join(timeout=1)
+            if thread.is_alive():
+                thread.join()
+
+    def add_member(self):
+        self.members += 1
+
+    def remove_member(self):
+        self.members -= 1
+        if self.members <= 0:
+            room_manager.remove_room(self.room_id)
+
+    def lock_room(self):
+        self.lock.acquire()
+
+    def unlock_room(self):
+        self.lock.release()
+
+
+class RoomManager:
+    def __init__(self):
+        self.rooms = {}
+
+    def create_room(self):
+        room_id = self.generate_room_id(2)
+        room = Room(
+            room_id=room_id
+        )
+        self.rooms[room_id] = room
+        room.start_threads()
+        return room_id
+
+    def get_room(self, room_id):
+        return self.rooms.get(room_id)
+
+    def remove_room(self, room_id):
+        room = self.rooms.get(room_id)
+
+        with room.lock:
+            if room:
+                room.stop_threads()
+                del self.rooms[room_id]
+
+    def list_rooms(self):
+        return list(self.rooms.keys())
+
+    def generate_room_id(self, length=2):
+        while True:
+            code = ""
+            for _ in range(length):
+                code += random.choice(string.ascii_uppercase)
+            if code not in self.rooms:
+                break
+        return code
+
+
+room_manager = RoomManager()
 
 
 def get_timestamp_utc() -> str:
@@ -61,18 +237,6 @@ def get_random_time():
     return 0.01 + value * (0.35 - 0.01)
 
 
-def generate_unique_code(length):
-    while True:
-        code = ""
-        for _ in range(length):
-            code += random.choice(string.ascii_uppercase)
-
-        if code not in STATUS["rooms"]:
-            break
-
-    return code
-
-
 def log_event(event_type, username, additional_info=""):
     # 이벤트를 로그에 기록
     with open("events.log", "a") as log_file:
@@ -81,142 +245,31 @@ def log_event(event_type, username, additional_info=""):
         )
 
 
-def worker():
-    while STATUS["count"] < 10:
-        chatgpt_response, room = STATUS["gpt"]["queue"].get()
-        if not chatgpt_response:
-            break
-        content = send_response("gpt", chatgpt_response, room)
-        STATUS["gpt"]["queue"].task_done()
-
-        # GPT 응답 전송 완료 후, 자동으로 Gemini 응답 생성
-        with STATUS["lock"]:
-            gemini_response = gemini.get_response(content["message"])
-            STATUS["gemini"]["queue"].put((gemini_response, room))
-
-
-def gemini_worker():
-    while STATUS["count"] < 10:
-        gemini_response, room = STATUS["gemini"]["queue"].get()
-        if not gemini_response:
-            break
-        content = send_response("gemini", gemini_response, room)
-        STATUS["gemini"]["queue"].task_done()
-
-        # Gemini 응답 전송 완료 후, 자동으로 GPT 응답 생성
-        with STATUS["lock"]:
-            chatgpt_response = gpt.get_response(content["message"])
-            STATUS["gpt"]["queue"].put((chatgpt_response, room))
-
-
-def handle_user_typing(side, data, room):
-    """
-    유저가 타이핑 중일 때 GPT와 Gemini 응답을 처리하는 함수.
-    """
-    if not room or not side:
-        return
-
-    recent_user_typing = data.get("message", "").strip()
-
-    if data["is_typing"]:
-        # 진행 중인 문장 유사도 비교
-        other_side = "gemini" if side == "gpt" else "gpt"
-        if fuzz.ratio(STATUS[other_side]["progressing"].get(room, ""), recent_user_typing) < 60:
-            STATUS[side]["progressing"][room] = False
-            response = generate_response(side, recent_user_typing, room)
-            return response
-    else:
-        # 메시지 전송이 끝났을 때 처리
-        if STATUS[side]["progressing"].get(room, False):
-            if fuzz.ratio(STATUS[other_side]["progressing"].get(room, ""), recent_user_typing) > 60:
-                return
-            STATUS[side]["progressing"][room] = False
-            response = generate_response(side, recent_user_typing, room)
-            return response
-        # 진행 중인 상태가 아니라면 새 응답을 생성
-        response = generate_response(side, recent_user_typing, room)
-        return response
-
-
-def generate_response(side, data, room):
-    """
-    GPT 또는 Gemini 모델에 맞는 응답을 생성하고 상태를 업데이트하는 함수.
-    """
-    if side == "gpt":
-        response = gpt.get_response(data)
-        STATUS["gpt"]["progressing"][room] = response
-        STATUS["gpt"]["queue"].put((response, room))
-        STATUS["gemini"]["progressing"][room] = data
-    elif side == "gemini":
-        response = gemini.get_response(data)
-        STATUS["gemini"]["progressing"][room] = response
-        STATUS["gemini"]["queue"].put((response, room))
-        STATUS["gpt"]["progressing"][room] = data
-
-    return response
-
-
-def send_response(side, response_data, room):
-    full_response = "".join(response_data)
-    try:
-        if side == "gpt":
-            tts_response = tts_f.request(full_response)
-        elif side == "gemini":
-            tts_response = tts_m.request(full_response)
-        audio_base64 = base64.b64encode(tts_response)
-    except Exception as e:
-        print(f"TTS error for {side}:", e)
-        audio_base64 = ""
-
-    content = {
-        "name": side,
-        "timestamp": get_timestamp_utc(),
-        "message": full_response,
-        "is_typing": False,
-        "audio_base64": audio_base64.decode("utf-8")
-    }
-
-    # 응답 전송
-    socketio.emit(f"{side}-message", content, room=room)
-
-    # 상태 업데이트
-    if room in STATUS[side]["finished"]:
-        STATUS[side]["finished"][room].clear()
-        STATUS[side]["finished"][room].wait()
-
-    return content
-
-
 @socketio.on("tts-finished")
 def handle_tts_finished(data):
     room = data.get("room")
     side = data.get("side")
 
-    if not room or not side:
+    if not (room and side):
         return
 
-    if room in STATUS[side]["finished"]:
-        STATUS[side]["finished"][room].set()
+    room_manager.get_room(room).status[side]["finished"].set()
 
 
 @socketio.on("gpt-message")
 def gpt_message(data, room):
     if not data or data.get("name") == "admin":
         return
-    print("GPT message received:", data)
 
-    STATUS["count"] += 1
-    handle_user_typing("gpt", data, room)
+    room_manager.get_room(room).handle_user_typing("gpt", data)
 
 
 @socketio.on("gemini-message")
 def gemini_message(data, room):
     if not data or data.get("name") == "admin":
         return
-    print("Gemini message received:", data)
 
-    STATUS["count"] += 1
-    handle_user_typing("gemini", data, room)
+    room_manager.get_room(room).handle_user_typing("gemini", data)
 
 
 @socketio.on("message")
@@ -231,15 +284,16 @@ def handle_message(data):
         "is_typing": False
     }
 
-    if not (room and message_text) or room not in STATUS["rooms"]:
+    if not (room and message_text) or room not in room_manager.rooms:
         return
 
     # 메시지 저장 및 브로드캐스트
-    STATUS["rooms"][room]["messages"].append(content)
+    room_manager.get_room(room).messages.append(content)
 
     # 로그 기록 및 GPT 응답 호출
     socketio.emit("message", content, room=room)
     gpt_message(content, room=room)
+
     log_event("Send", name, message_text)
 
 
@@ -254,7 +308,7 @@ def handle_typing(data):
         "is_typing": True,
     }
 
-    if not room or room not in STATUS["rooms"]:
+    if not room or room not in room_manager.rooms:
         return
 
     # 실시간 타이핑 메시지 전송
@@ -263,6 +317,7 @@ def handle_typing(data):
     # 일정 길이 이상 메시지면 GPT 반응 확률적으로 호출
     if len(message_text) > 70 and random.randint(0, 1) == 1:
         gpt_message(content, room=room)
+
     log_event("Keystroke", name, message_text)
 
 
@@ -277,10 +332,11 @@ def handle_live_toggle(data):
         "timestamp": get_timestamp_utc(),
     }
 
-    if not room or room not in STATUS["rooms"]:
+    if not room or room not in room_manager.rooms:
         return
 
     socketio.emit("notification", content, room=room)
+
     log_event("Toggle", name, status)
 
 
@@ -296,18 +352,14 @@ def handle_send_topic(data):
         "is_typing": False,
     }
 
-    if not (topic and room) or room not in STATUS["rooms"]:
+    if not (topic and room) or room not in room_manager.rooms:
         return
 
-    # GPT 및 Gemini 처리 완료 여부를 관리할 이벤트 객체 초기화
-    STATUS["gpt"]["finished"][room] = threading.Event()
-    STATUS["gemini"]["finished"][room] = threading.Event()
     # 메시지 저장
-    STATUS["rooms"][room]["messages"].append(content)
-    STATUS["count"] = 0
-
+    room_manager.get_room(room).messages.append(content)
     # GPT 처리 함수 호출
     gpt_message(content, room=room)
+
     log_event("Send", name, content["message"])
 
 
@@ -323,14 +375,14 @@ def handle_connect(auth):
     }
 
     # 세션이나 유효한 방이 없으면 연결 중단
-    if not (room and topic) or room not in STATUS["rooms"]:
+    if not (room and topic) or room not in room_manager.rooms:
         flask_socketio.leave_room(room)
         return
 
-    STATUS["rooms"][room]["members"] += 1
-
     flask_socketio.join_room(room)
     socketio.emit("notification", content, room=room)
+    room_manager.get_room(room).add_member()
+
     log_event("Connect", name, content["message"])
 
 
@@ -350,11 +402,9 @@ def handle_disconnect():
             content,
             to=room
         )
+        if room in room_manager.rooms:
+            room_manager.get_room(room).remove_member()
 
-        if room in STATUS["rooms"]:
-            STATUS["rooms"][room]["members"] -= 1
-            if STATUS["rooms"][room]["members"] <= 0:
-                del STATUS["rooms"][room]
         log_event("Disconnect", name, content["message"])
 
 
@@ -363,14 +413,14 @@ def room():
     room = flask.session.get("room")
     topic = flask.session.get("topic")
 
-    if not (room and topic) or room not in STATUS["rooms"]:
+    if not (room and topic) or room not in room_manager.rooms:
         return flask.redirect(flask.url_for("home"))
 
     return flask.render_template(
         "room.html",
         code=room,
         topic=topic,
-        messages=STATUS["rooms"][room]["messages"]
+        messages=room_manager.get_room(room).messages
     )
 
 
@@ -392,8 +442,7 @@ def home():
                 random_topics=random_topics
             )
 
-        room = generate_unique_code(2)
-        STATUS["rooms"][room] = {"members": 0, "messages": []}
+        room = room_manager.create_room()
 
         flask.session["room"] = room
         flask.session["topic"] = topic
@@ -402,18 +451,12 @@ def home():
         flask.session["model_con"] = model_con
 
         return flask.redirect(flask.url_for("room"))
+
     return flask.render_template(
         "home.html",
         random_topics=random_topics
     )
 
-
-THREADS = {
-    "gpt": threading.Thread(target=worker, daemon=True),
-    "gemini": threading.Thread(target=gemini_worker, daemon=True)
-}
-for thread in THREADS.values():
-    thread.start()
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=80, debug=True)

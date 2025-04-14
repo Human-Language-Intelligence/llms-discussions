@@ -138,34 +138,31 @@ def handle_user_typing(side, data, room):
         return response
 
 
-def generate_response(side, recent_user_typing, room):
+def generate_response(side, data, room):
     """
     GPT 또는 Gemini 모델에 맞는 응답을 생성하고 상태를 업데이트하는 함수.
     """
     if side == "gpt":
-        response = gpt.get_response(recent_user_typing)
+        response = gpt.get_response(data)
         STATUS["gpt"]["progressing"][room] = response
         STATUS["gpt"]["queue"].put((response, room))
-        STATUS["gemini"]["progressing"][room] = recent_user_typing
+        STATUS["gemini"]["progressing"][room] = data
     elif side == "gemini":
-        response = gemini.get_response(recent_user_typing)
+        response = gemini.get_response(data)
         STATUS["gemini"]["progressing"][room] = response
         STATUS["gemini"]["queue"].put((response, room))
-        STATUS["gpt"]["progressing"][room] = recent_user_typing
+        STATUS["gpt"]["progressing"][room] = data
 
     return response
 
 
 def send_response(side, response_data, room):
     full_response = "".join(response_data)
-
-    if side == "gpt":
-        tts_function = tts_f.request
-    elif side == "gemini":
-        tts_function = tts_m.request
-
     try:
-        tts_response = tts_function(full_response)
+        if side == "gpt":
+            tts_response = tts_f.request(full_response)
+        elif side == "gemini":
+            tts_response = tts_m.request(full_response)
         audio_base64 = base64.b64encode(tts_response)
     except Exception as e:
         print(f"TTS error for {side}:", e)

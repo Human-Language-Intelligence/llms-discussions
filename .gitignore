@@ -2,3 +2,4 @@
 /source/__pycache__
 /*.json
 events.log
+config.ini

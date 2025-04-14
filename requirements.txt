@@ -1,9 +1,7 @@
 flask
 flask-socketio
-fuzzywuzzy
+thefuzz
 openai
 google-api-python-client
 google-cloud-texttospeech
-google-genai
-google-generativeai
 google-cloud-aiplatform

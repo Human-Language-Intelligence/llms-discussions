@@ -84,7 +84,7 @@ def log_event(event_type, username, additional_info=""):
 def worker():
     while STATUS["count"] < 10:
         chatgpt_response, room = STATUS["gpt"]["queue"].get()
-        if chatgpt_response is None:
+        if not chatgpt_response:
             break
         content = send_response("gpt", chatgpt_response, room)
         STATUS["gpt"]["queue"].task_done()
@@ -98,7 +98,7 @@ def worker():
 def gemini_worker():
     while STATUS["count"] < 10:
         gemini_response, room = STATUS["gemini"]["queue"].get()
-        if gemini_response is None:
+        if not gemini_response:
             break
         content = send_response("gemini", gemini_response, room)
         STATUS["gemini"]["queue"].task_done()
@@ -204,7 +204,7 @@ def handle_tts_finished(data):
 
 @socketio.on("gpt-message")
 def gpt_message(data, room):
-    if data is None or data.get("name") == "admin":
+    if not data or data.get("name") == "admin":
         return
     print("GPT message received:", data)
 
@@ -214,7 +214,7 @@ def gpt_message(data, room):
 
 @socketio.on("gemini-message")
 def gemini_message(data, room):
-    if data is None or data.get("name") == "admin":
+    if not data or data.get("name") == "admin":
         return
     print("Gemini message received:", data)
 
@@ -225,20 +225,17 @@ def gemini_message(data, room):
 @socketio.on("message")
 def handle_message(data):
     room = flask.session.get("room")
-    if not room or room not in STATUS["rooms"]:
-        return
-
+    name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
-    if not message_text:
-        return  # 빈 메시지는 무시
-
-    name = flask.session.get("name", "User")
     content = {
         "name": name,
         "message": message_text,
         "timestamp": get_timestamp_utc(),
         "is_typing": False
     }
+
+    if not (room and message_text) or room not in STATUS["rooms"]:
+        return
 
     # 메시지 저장 및 브로드캐스트
     STATUS["rooms"][room]["messages"].append(content)
@@ -252,16 +249,16 @@ def handle_message(data):
 @socketio.on("typing")
 def handle_typing(data):
     room = flask.session.get("room")
-    if not room or room not in STATUS["rooms"]:
-        return
-
-    name = flask.session.get("name", "User")
+    name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
     content = {
         "name": name,
         "message": message_text,
         "is_typing": True,
     }
+
+    if not room or room not in STATUS["rooms"]:
+        return
 
     # 실시간 타이핑 메시지 전송
     socketio.emit("message", content, room=room)
@@ -275,16 +272,16 @@ def handle_typing(data):
 @socketio.on("live-toggle")
 def handle_live_toggle(data):
     room = flask.session.get("room")
-    if not room or room not in STATUS["rooms"]:
-        return
-
-    name = flask.session.get("name", "User")
+    name = flask.session.get("name", "user")
     status = data.get("status", "offline")
     content = {
         "name": name,
         "message": f"{name} has gone {status}",
         "timestamp": get_timestamp_utc(),
     }
+
+    if not room or room not in STATUS["rooms"]:
+        return
 
     socketio.emit("notification", content, room=room)
     log_event("Toggle", name, status)
@@ -293,24 +290,24 @@ def handle_live_toggle(data):
 @socketio.on("send-topic")
 def handle_send_topic(data):
     room = flask.session.get("room")
-    name = flask.session.get("name", "User")
+    name = flask.session.get("name", "user")
     topic = data.get("topic", "").strip()
-    if not (topic and room) or room not in STATUS["rooms"]:
-        return
-
-    # GPT 및 Gemini 처리 완료 여부를 관리할 이벤트 객체 초기화
-    STATUS["gpt"]["finished"][room] = threading.Event()
-    STATUS["gemini"]["finished"][room] = threading.Event()
-
-    # 메시지 구성
     content = {
         "name": name,
         "message": f"토론 주제는 '{topic}' 입니다.",
         "timestamp": get_timestamp_utc(),
         "is_typing": False,
     }
+
+    if not (topic and room) or room not in STATUS["rooms"]:
+        return
+
+    # GPT 및 Gemini 처리 완료 여부를 관리할 이벤트 객체 초기화
+    STATUS["gpt"]["finished"][room] = threading.Event()
+    STATUS["gemini"]["finished"][room] = threading.Event()
     # 메시지 저장
     STATUS["rooms"][room]["messages"].append(content)
+    STATUS["count"] = 0
 
     # GPT 처리 함수 호출
     gpt_message(content, room=room)
@@ -321,17 +318,18 @@ def handle_send_topic(data):
 def handle_connect(auth):
     room = flask.session.get("room")
     topic = flask.session.get("topic")
-    # 세션이나 유효한 방이 없으면 연결 중단
-    if not (room and topic) or room not in STATUS["rooms"]:
-        flask_socketio.leave_room(room)
-        return
-
-    name = flask.session.get("name", "User")  # 이름이 있다면 세션에서 가져오고, 기본값은 'User'
+    name = flask.session.get("name", "user")
     content = {
         "name": name,
         "message": f"{name} has entered the room",
         "timestamp": get_timestamp_utc(),
     }
+
+    # 세션이나 유효한 방이 없으면 연결 중단
+    if not (room and topic) or room not in STATUS["rooms"]:
+        flask_socketio.leave_room(room)
+        return
+
     STATUS["rooms"][room]["members"] += 1
 
     flask_socketio.join_room(room)
@@ -342,15 +340,14 @@ def handle_connect(auth):
 @socketio.on("disconnect")
 def handle_disconnect():
     room = flask.session.get("room")
-    name = flask.session.get("name", "User")  # 이름도 세션에서 가져오되 기본값 지정
+    name = flask.session.get("name", "user")
+    content = {
+        "name": name,
+        "message": "has left the room"
+    }
 
     if room:
         flask_socketio.leave_room(room)
-
-        content = {
-            "name": name,
-            "message": "has left the room"
-        }
         # 퇴장 메시지 전송
         flask_socketio.send(
             content,
@@ -372,8 +369,6 @@ def room():
     if not (room and topic) or room not in STATUS["rooms"]:
         return flask.redirect(flask.url_for("home"))
 
-    STATUS["count"] = 0
-
     return flask.render_template(
         "room.html",
         code=room,
@@ -388,20 +383,32 @@ def home():
     random_topics = random.sample(TOPIC_POOL, 3)
 
     if flask.request.method == "POST":
+        name = "user"  # 기본 이름
         topic = flask.request.form.get("topic", "").strip()
         model_pro = flask.request.form.get("model_pro")
         model_con = flask.request.form.get("model_con")
 
         if not topic:
-            return flask.render_template("home.html", error="Please enter a topic.", random_topics=random_topics)
+            return flask.render_template(
+                "home.html",
+                error="Please enter a topic.",
+                random_topics=random_topics
+            )
 
         room = generate_unique_code(2)
         STATUS["rooms"][room] = {"members": 0, "messages": []}
+
         flask.session["room"] = room
         flask.session["topic"] = topic
+        flask.session["name"] = name
+        flask.session["model_pro"] = model_pro
+        flask.session["model_con"] = model_con
 
         return flask.redirect(flask.url_for("room"))
-    return flask.render_template("home.html", random_topics=random_topics)
+    return flask.render_template(
+        "home.html",
+        random_topics=random_topics
+    )
 
 
 THREADS = {

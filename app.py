@@ -18,16 +18,16 @@ room_manager.event_bus.subscribe(
     "gpt-response",
     lambda data: socketio.emit(
         "gpt-message",
-        data["content"],
-        room=data["room"]
+        data.get("content"),
+        room=data.get("room")
     )
 )
 room_manager.event_bus.subscribe(
     "gemini-response",
     lambda data: socketio.emit(
         "gemini-message",
-        data["content"],
-        room=data["room"]
+        data.get("content"),
+        room=data.get("room")
     )
 )
 
@@ -45,7 +45,7 @@ def handle_tts(data):
 
 @socketio.on("gpt-message")
 def handle_model(data, code):
-    if not data or data.get("name") == "admin":
+    if not data:
         return
 
     room = room_manager.get_room(code)
@@ -146,11 +146,11 @@ def handle_send_topic(data):
     # GPT 처리 함수 호출
     handle_model(content, code)
 
-    utils.log_event("Send", name, content["message"])
+    utils.log_event("Send", name, content.get("message"))
 
 
 @socketio.on("connect")
-def handle_connect(auth):
+def handle_connect():
     code = flask.session.get("room")
     topic = flask.session.get("topic")
     name = flask.session.get("name", "user")
@@ -165,12 +165,13 @@ def handle_connect(auth):
         flask_socketio.leave_room(code)
         return
 
-    flask_socketio.join_room(code)
-    socketio.emit("notification", content, room=code)
     room = room_manager.get_room(code)
     room.add_member()
 
-    utils.log_event("Connect", name, content["message"])
+    flask_socketio.join_room(code)
+    socketio.emit("notification", content, room=code)
+
+    utils.log_event("Connect", name, content.get("message"))
 
 
 @socketio.on("disconnect")
@@ -197,7 +198,7 @@ def handle_disconnect():
         if not condition:
             room_manager.remove_room(code)
 
-    utils.log_event("Disconnect", name, content["message"])
+    utils.log_event("Disconnect", name, content.get("message"))
 
 
 @app.route("/room")

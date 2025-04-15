@@ -38,10 +38,11 @@ def handle_tts(data):
     role = data.get("role")
     if not (code and role):
         return
-    print(f"tts-finished: {code}, {role}")
 
     room = room_manager.get_room(code)
     room.set_event(role)
+
+    utils.log_event("Finished", role)
 
 
 @socketio.on("model-message")
@@ -226,8 +227,6 @@ def home():
         topic = flask.request.form.get("topic", "").strip()
         model_pros = flask.request.form.get("model_pros")
         model_cons = flask.request.form.get("model_cons")
-
-        print(model_pros, model_cons)
 
         if not topic:
             return flask.render_template(

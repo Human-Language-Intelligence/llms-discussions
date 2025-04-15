@@ -38,10 +38,9 @@ def handle_tts(data):
     side = data.get("side")
     if not (code and side):
         return
-    other_side = "gemini" if side == "gpt" else "gpt"
 
     room = room_manager.get_room(code)
-    room.set_event(other_side)
+    room.set_event(side)
 
 
 @socketio.on("gpt-message")

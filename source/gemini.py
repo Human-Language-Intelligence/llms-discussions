@@ -1,25 +1,21 @@
-import configparser
-
 from google.oauth2 import service_account
 from google.cloud import aiplatform
 from vertexai import generative_models
 
-with open('config.ini', 'r') as f:
-    _CONFIG = configparser.ConfigParser()
-    _CONFIG.read_file(f)
+from .config import CONFIG as _CONFIG
 
 
 class Gemini():
     def __init__(self, system_prompt: str = None) -> None:
         aiplatform.init(
-            project=_CONFIG['google']['GCP.PROJECT_ID'],
-            location=_CONFIG['google']['GCP.LOCATION'],
+            project=_CONFIG["google"]["GCP.PROJECT_ID"],
+            location=_CONFIG["google"]["GCP.LOCATION"],
             credentials=service_account.Credentials.from_service_account_file(
-                _CONFIG['google']['CREDENTIALS']
+                _CONFIG["google"]["CREDENTIALS"]
             )
         )
 
-        self.model_name = _CONFIG["google"]['GEMINI.MODEL_NAME']
+        self.model_name = _CONFIG["google"]["GEMINI.MODEL_NAME"]
         self.client = None
         self.chat = None
         self.conversations = []
@@ -29,7 +25,7 @@ class Gemini():
         if system_prompt:
             # self.convert_history(history)
             self.append_history(
-                role='user',
+                role="user",
                 text=system_prompt
             )
         else:
@@ -55,16 +51,16 @@ class Gemini():
         # result = [
         #     _.text for _ in response.candidates[
         #         probability.index(max(probability))
-        #     ].content.parts if hasattr(_, 'text')
+        #     ].content.parts if hasattr(_, "text")
         # ]
 
         return response.text
 
     def convert_content(self, content: dict) -> generative_models.Content:
         content = generative_models.Content(
-            role=content.get('role'),
+            role=content.get("role"),
             parts=[
-                generative_models.Part.from_text(part.get('text')) for part in content.get('parts')
+                generative_models.Part.from_text(part.get("text")) for part in content.get("parts")
             ]
         )
         return content
@@ -91,7 +87,7 @@ if __name__ == "__main__":
     history = "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
 
     gemini = Gemini(history)
-    gemini.append_history('assistant', '학교는 연구를 위한 곳입니다.')
-    response = gemini.get_response('위 내용에 대해서 답변해줘.')
+    gemini.append_history("assistant", "학교는 연구를 위한 곳입니다.")
+    response = gemini.get_response("위 내용에 대해서 답변해줘.")
 
     print(response)

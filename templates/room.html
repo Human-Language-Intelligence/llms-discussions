@@ -6,9 +6,9 @@
     <div id="room-container" data-room="{{ code }}"></div>
     <div class="messages scrollbar" id="messages">
       {% for msg in messages %}
-      <div class="message {{ 'user1' if msg.role == user1Type else 'user2' }}">
+      <div class="message {{ 'user1' if msg.role == user1Role else 'user2' }}">
         <div class="bubble">
-          <span class="name {{ 'user1' if msg.role == user1Type else 'user2' }}">{{ msg.name.upper() }}</span>
+          <span class="name {{ 'user1' if msg.role == user1Role else 'user2' }}">{{ msg.name.upper() }}</span>
           <p>{{ msg.message }}</p>
         </div>
         <span class="timestamp">{{ msg.timestamp }}</span>
@@ -36,7 +36,7 @@
   const messageBoxes = document.getElementById("messages");
   // const messageInput = document.getElementById("message");
 
-  let user1Type = "pros";
+  let user1Role = "pros";
   let isUserNearBottom = true;
   let isLive = true; // default to live
 
@@ -90,14 +90,14 @@
 
     const userClass = isAdmin
       ? "admin"
-      : (role === user1Type ? "user1" : "user2")
+      : (role === user1Role ? "user1" : "user2")
 
     // 내부에서 avatar 자동 결정
     const avatar = isAdmin
       ? ""
-      : isPros
+      : name === "gpt"
         ? "./static/ChatGPT.png"
-        : isCons
+        : name === "gemini"
           ? "./static/Gemini.png"
           : "./static/User.png";
 
@@ -131,7 +131,7 @@
   };
 
   const showTyping = (name, role, typingText) => {
-    const isUser1 = role === user1Type;
+    const isUser1 = role === user1Role;
     const userClass = isUser1 ? "user1" : "user2";
     const sideLabel = name === "gpt" ? "찬성" : "반대";
     const textAlignStyle = isUser1 ? "flex-end" : "flex-start";
@@ -174,7 +174,7 @@
   };
 
   const handleMessage = (data) => {
-    const isUser1 = data.name === user1Name;
+    const isUser1 = data.role === user1Role;
     const userClass = isUser1 ? "user1" : "user2";
 
     if (data.is_typing) {
@@ -335,7 +335,7 @@
         message: data.message,
         role: "user",
       });
-      removeTypingMessage(data.name, data.name === user1Name);
+      handleTypingMessage(data.role);
     }
   });
 

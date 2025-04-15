@@ -27,16 +27,15 @@ class ModelWorker:
 
             response = self.model.get_response(user_input)
             content = self.process_content(response)
-
             if self.room.event_bus:
                 self.room.event_bus.publish(f"{self.name}-response", {
                     "room": self.room.room_id,
                     "content": content
                 })
-            self.output_queue.put(response)
             self.room.append_message(content)
-
             self.wait_event()
+
+            self.output_queue.put(response)
             self.input_queue.task_done()
 
     def process_content(self, message):

@@ -62,7 +62,7 @@ def handle_message(data):
     message_text = data.get("data", "").strip()
     data = content.MessageContent(
         name=name,
-        type="user",
+        role="user",
         message=message_text,
         is_playing=True
     ).to_dict()
@@ -86,7 +86,7 @@ def handle_typing(data):
     message_text = data.get("data", "").strip()
     data = content.MessageContent(
         name=name,
-        type="user",
+        role="user",
         message=message_text,
         is_typing=True
     ).to_dict()
@@ -111,7 +111,7 @@ def handle_live_toggle(data):
     status = data.get("status", "offline")
     data = content.MessageContent(
         name=name,
-        type="system",
+        role="system",
         message=f"{name} is now {status}"
     ).to_dict()
 
@@ -130,7 +130,7 @@ def handle_send_topic(data):
     topic = data.get("topic", "").strip()
     data = content.MessageContent(
         name=name,
-        type="system",
+        role="system",
         message=f"토론 주제는 '{topic}' 입니다.",
         is_playing=True
     ).to_dict()
@@ -153,7 +153,7 @@ def handle_connect():
     name = flask.session.get("name", "user")
     data = content.MessageContent(
         name=name,
-        type="system",
+        role="system",
         message=f"{name} has entered the room"
     ).to_dict()
 
@@ -177,7 +177,7 @@ def handle_disconnect():
     name = flask.session.get("name", "user")
     data = content.MessageContent(
         name=name,
-        type="system",
+        role="system",
         message=f"{name} has left the room"
     ).to_dict()
 

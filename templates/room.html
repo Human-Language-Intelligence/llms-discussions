@@ -6,9 +6,9 @@
     <div id="room-container" data-room="{{ code }}"></div>
     <div class="messages scrollbar" id="messages">
       {% for msg in messages %}
-      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
+      <div class="message {{ 'user1' if msg.role == user1Type else 'user2' }}">
         <div class="bubble">
-          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name.upper() }}</span>
+          <span class="name {{ 'user1' if msg.role == user1Type else 'user2' }}">{{ msg.name.upper() }}</span>
           <p>{{ msg.message }}</p>
         </div>
         <span class="timestamp">{{ msg.timestamp }}</span>
@@ -36,8 +36,7 @@
   const messageBoxes = document.getElementById("messages");
   // const messageInput = document.getElementById("message");
 
-  let user1Name = "gpt"; //"{{ session['name'] }}";
-  // let user2Name = "gemini";
+  let user1Type = "pros";
   let isUserNearBottom = true;
   let isLive = true; // default to live
 
@@ -56,6 +55,16 @@
         behavior: 'smooth'
       });
     }
+  };
+
+  const createNotification = (msg) => {
+    const content = `
+      <div class="notification">
+        <p>${msg}</p>
+      </div>
+    `;
+    messageBoxes.insertAdjacentHTML("beforeend", content);
+    messageBoxes.scrollTop = messageBoxes.scrollHeight;
   };
 
   const sendMessage = () => {
@@ -81,7 +90,7 @@
 
     const userClass = isAdmin
       ? "admin"
-      : (name === user1Name ? "user1" : "user2")
+      : (role === user1Type ? "user1" : "user2")
 
     // 내부에서 avatar 자동 결정
     const avatar = isAdmin
@@ -121,25 +130,25 @@
     }
   };
 
-  const showTyping = (name, typingText) => {
-    const isUser1 = name === user1Name;
+  const showTyping = (name, role, typingText) => {
+    const isUser1 = role === user1Type;
     const userClass = isUser1 ? "user1" : "user2";
+    const sideLabel = name === "gpt" ? "찬성" : "반대";
     const textAlignStyle = isUser1 ? "flex-end" : "flex-start";
 
     // 타이핑이 비어 있으면 기존 메시지를 삭제
     if (typingText === "") {
-      const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
+      const existingTypingMessage = document.querySelector(`.${userClass}.${role}-typing-message`);
       if (existingTypingMessage) {
         existingTypingMessage.remove();
       }
       return;
     }
 
-    const sideLabel = name === "gpt" ? "찬성" : "반대";
     const formattedTyping = typingText.replace(/\n/g, "<br>");
 
     const typingContent = `
-    <div class="message typing-message ${userClass} ${name}-typing-message">
+    <div class="message typing-message ${userClass} ${role}-typing-message">
       <div class="bubble" style="align-self: ${textAlignStyle};">
         <div class="profile">
           <img src="./static/${name}.png" class="logo">
@@ -151,7 +160,7 @@
     </div>
   `;
 
-    const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
+    const existingTypingMessage = document.querySelector(`.${userClass}.${role}-typing-message`);
 
     // 기존 메시지가 없으면 새 메시지를 추가
     if (!existingTypingMessage) {
@@ -164,23 +173,23 @@
     scrollDown();
   };
 
-  const handleMessage = (data, role) => {
+  const handleMessage = (data) => {
     const isUser1 = data.name === user1Name;
     const userClass = isUser1 ? "user1" : "user2";
 
     if (data.is_typing) {
-      showTyping(role, data.message);
+      showTyping(data.name, data.role, data.message);
     } else {
       createChatMessage({
         name: data.name,
         message: data.message,
-        role: role,
+        role: data.role,
       });
 
-      handleTypingMessage(role)
+      handleTypingMessage(data.role)
 
       if (data.audio_base64) {
-        playAudio(data.audio_base64, role);
+        playAudio(data.audio_base64, data.role);
       }
     }
   };
@@ -197,6 +206,15 @@
         existingTypingMessage.remove();
       }
     }
+  };
+
+  const playAudio = (audioBase64, role) => {
+    const audio = new Audio("data:audio/ogg;base64," + audioBase64);
+    audio.play();
+    audio.onended = function () {
+      socketIO.emit("tts-finished", { role: role, room: roomCode });
+      console.log(`TTS finished: ${role}, room: ${roomCode}`);
+    };
   };
 
   function simulateTypingRemoval(element, delay = 100) {
@@ -216,25 +234,6 @@
 
     removeWord();
   }
-
-  const playAudio = (audioBase64, role) => {
-    const audio = new Audio("data:audio/ogg;base64," + audioBase64);
-    audio.play();
-    audio.onended = function () {
-      socketIO.emit("tts-finished", { role: role, room: roomCode });
-      console.log(`TTS finished: ${role}, room: ${roomCode}`);
-    };
-  };
-
-  const createNotification = (msg) => {
-    const content = `
-      <div class="notification">
-        <p>${msg}</p>
-      </div>
-    `;
-    messageBoxes.insertAdjacentHTML("beforeend", content);
-    messageBoxes.scrollTop = messageBoxes.scrollHeight;
-  };
 
   function scrollDownAndHideAlert() {
     setTimeout(() => {
@@ -329,7 +328,7 @@
 
   socketIO.on("message", (data) => {
     if (data.is_typing) {
-      showTyping(data.name, data.message);
+      showTyping(data.name, data.role, data.message);
     } else {
       createChatMessage({
         name: data.name,
@@ -340,8 +339,8 @@
     }
   });
 
-  socketIO.on("pros-message", (data) => handleMessage(data, "pros"));
-  socketIO.on("cons-message", (data) => handleMessage(data, "cons"));
+  socketIO.on("pros-message", (data) => handleMessage(data));
+  socketIO.on("cons-message", (data) => handleMessage(data));
 
   socketIO.on("clear-pros-response", () => handleTypingMessage("pros", false, true));
   socketIO.on("clear-cons-response", () => handleTypingMessage("cons", false, true));

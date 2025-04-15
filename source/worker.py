@@ -22,7 +22,7 @@ class ModelWorker:
     def process_content(self, message):
         data = content.MessageContent(
             name=self.name,
-            type=self.role,
+            role=self.role,
             message=message,
         ).to_dict()
 

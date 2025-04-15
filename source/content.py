@@ -6,7 +6,7 @@ from . import utils
 @dataclass
 class MessageContent:
     name: str
-    type: str
+    role: str
     message: str
     audio_base64: str = ""
     timestamp: str = field(default_factory=utils.get_utc_timestamp)

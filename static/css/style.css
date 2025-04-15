@@ -84,26 +84,26 @@ main {
 }
 
 .message.user1 .bubble {
+  align-self: flex-start;
+  background-color: #e5e5ea;
+  /*#28a40f;*/
+  color: black;
+}
+
+.message.user2 .bubble {
   align-self: flex-end;
   background-color: #007bff;
   color: white;
 }
 
-.message.user2 .bubble {
+.pros-response .bubble {
   align-self: flex-start;
   background-color: #e5e5ea;
   /*#28a40f;*/
   color: black;
 }
 
-.chatgpt-response .bubble {
-  align-self: flex-start;
-  background-color: #e5e5ea;
-  /*#28a40f;*/
-  color: black;
-}
-
-.gemini-response .bubble {
+.cons-response .bubble {
   align-self: flex-end;
   background-color: #007bff;
   color: white;
@@ -120,20 +120,19 @@ main {
 }
 
 .typing-message.user1 .bubble {
-  align-self: flex-end;
-  background-color: darkgray;
-  /*(221, 221, 221);*/
-  color: white;
-}
-
-
-.typing-message.user2 .bubble {
   align-self: flex-start;
   background-color: darkgray;
   /*rgb(221, 221, 221);*/
   color: white;
   /*#404040rgb(255, 255, 255)*/
   ;
+}
+
+.typing-message.user2 .bubble {
+  align-self: flex-end;
+  background-color: darkgray;
+  /*(221, 221, 221);*/
+  color: white;
 }
 
 .timestamp {
@@ -145,15 +144,15 @@ main {
 }
 
 .message.user1 .timestamp {
-  align-self: flex-end;
-}
-
-.timestamp.gemini {
-  align-self: flex-end;
+  align-self: flex-start;
 }
 
 .message.user2 .timestamp {
-  align-self: flex-start;
+  align-self: flex-end;
+}
+
+.timestamp.cons {
+  align-self: flex-end;
 }
 
 .inputs {

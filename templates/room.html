@@ -6,9 +6,9 @@
     <div id="room-container" data-room="{{ code }}"></div>
     <div class="messages scrollbar" id="messages">
       {% for msg in messages %}
-      <div class="message {{ 'user1' if msg.name == user1Name else user2Name }}">
+      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
         <div class="bubble">
-          <span class="name {{ 'user1' if msg.name == user1Name else user2Name }}">{{ msg.name }}</span>
+          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name.upper() }}</span>
           <p>{{ msg.message }}</p>
         </div>
         <span class="timestamp">{{ msg.timestamp }}</span>
@@ -36,8 +36,8 @@
   const messageBoxes = document.getElementById("messages");
   // const messageInput = document.getElementById("message");
 
-  let user1Name = "gemini"; //"{{ session['name'] }}";
-  let user2Name = "The Other User"; // TODO
+  let user1Name = "gpt"; //"{{ session['name'] }}";
+  // let user2Name = "gemini";
   let isUserNearBottom = true;
   let isLive = true; // default to live
 
@@ -81,11 +81,7 @@
 
     const userClass = isAdmin
       ? "admin"
-      : role === "user"
-        ? (name === user1Name ? "user1" : "user2")
-        : isPros
-          ? "pros-response"
-          : "cons-response";
+      : (name === user1Name ? "user1" : "user2")
 
     // 내부에서 avatar 자동 결정
     const avatar = isAdmin
@@ -97,11 +93,11 @@
           : "./static/User.png";
 
     const profileBlock = isAdmin
-      ? `<span class="name">${name}</span>`
+      ? `<span class="name">${name.toUpperCase()}</span>`
       : `
       <div class="profile">
         <img src="${avatar}" alt="${role}" class="logo">
-        <span class="name">${name}</span>
+        <span class="name">${name.toUpperCase()}</span>
       </div>`;
 
     const formattedMessage = message.replace(/\n/g, "<br>");
@@ -168,30 +164,30 @@
     scrollDown();
   };
 
-  const handleMessage = (data, side) => {
+  const handleMessage = (data, role) => {
     const isUser1 = data.name === user1Name;
     const userClass = isUser1 ? "user1" : "user2";
 
     if (data.is_typing) {
-      showTyping(side, data.message);
+      showTyping(role, data.message);
     } else {
       createChatMessage({
         name: data.name,
         message: data.message,
-        role: side,
+        role: role,
       });
 
-      handleTypingMessage(userClass)
+      handleTypingMessage(role)
 
       if (data.audio_base64) {
-        playAudio(data.audio_base64, side);
+        playAudio(data.audio_base64, role);
       }
     }
   };
 
-  const handleTypingMessage = (side, isUser1 = false, simulateRemoval = false) => {
+  const handleTypingMessage = (role, isUser1 = false, simulateRemoval = false) => {
     const userClass = isUser1 ? "user1" : "user2";
-    const typingSelector = `.${userClass}.${side}-typing-message, .${side}-typing-message`;
+    const typingSelector = `.${userClass}.${role}-typing-message, .${role}-typing-message`;
 
     const existingTypingMessage = document.querySelector(typingSelector);
     if (existingTypingMessage) {
@@ -221,12 +217,12 @@
     removeWord();
   }
 
-  const playAudio = (audioBase64, side) => {
+  const playAudio = (audioBase64, role) => {
     const audio = new Audio("data:audio/ogg;base64," + audioBase64);
     audio.play();
     audio.onended = function () {
-      socketIO.emit("tts-finished", { side, room: roomCode });
-      console.log(`TTS finished: ${side}, room: ${roomCode}`);
+      socketIO.emit("tts-finished", { role: role, room: roomCode });
+      console.log(`TTS finished: ${role}, room: ${roomCode}`);
     };
   };
 

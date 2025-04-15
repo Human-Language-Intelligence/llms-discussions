@@ -34,12 +34,15 @@ class Room:
             self.threads["pros"].input_queue
         )
 
-    def select_model(self, model, side):
-        prompt_key = "HISTORY.POSITIVE" if side == "pros" else "HISTORY.NEGATIVE"
+    def select_model(self, model, role):
+        models = {
+            "gpt": chatgpt.ChatGPT,
+            "gemini": gemini.Gemini
+        }
+        prompt_key = "HISTORY.POSITIVE" if role == "pros" else "HISTORY.NEGATIVE"
         prompt = _CONFIG["default"][prompt_key]
 
-        model_cls = chatgpt.ChatGPT if model == "gpt" else gemini.Gemini
-        return model_cls(prompt)
+        return models.get(model)(prompt)
 
     def append_message(self, message):
         with self.lock:
@@ -64,14 +67,14 @@ class Room:
         self.members -= 1
         return self.members > 0
 
-    def wait_event(self, side):
-        self.threads[side].wait_event()
+    def wait_event(self, role):
+        self.threads[role].wait_event()
 
-    def set_event(self, side):
-        self.threads[side].set_event()
+    def set_event(self, role):
+        self.threads[role].set_event()
 
-    def check_event(self, side):
-        return self.threads[side].event.is_set()
+    def check_event(self, role):
+        return self.threads[role].event.is_set()
 
     def start_threads(self):
         with self.lock:

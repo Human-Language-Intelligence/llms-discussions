@@ -6,9 +6,9 @@ from . import content
 
 
 class ModelWorker:
-    def __init__(self, room, side, model, tts):
+    def __init__(self, room, role, model, tts):
         self.room = room
-        self.side = side
+        self.role = role
         self.name = model.model_name.split("-")[0]
         self.model = model
         self.tts = tts
@@ -22,7 +22,7 @@ class ModelWorker:
     def process_content(self, message):
         data = content.MessageContent(
             name=self.name,
-            type=self.side,
+            type=self.role,
             message=message,
         ).to_dict()
 
@@ -35,7 +35,7 @@ class ModelWorker:
             print(f"[{self.name}] TTS 오류:", e)
 
         if self.room.event_bus:
-            self.room.event_bus.publish(f"{self.side}-response", {
+            self.room.event_bus.publish(f"{self.role}-response", {
                 "room": self.room.room_id,
                 "data": data
             })

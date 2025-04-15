@@ -9,11 +9,13 @@ class RoomManager:
         self.rooms = {}
         self.event_bus = event.EventBus()
 
-    def create_room(self):
+    def create_room(self, model_pros, model_cons):
         room_id = self.generate_room_id(2)
         self.rooms[room_id] = room.Room(
             room_id=room_id,
             event_bus=self.event_bus,
+            model_pros=model_pros,
+            model_cons=model_cons
         )
         self.rooms[room_id].start_threads()
         return room_id

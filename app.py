@@ -4,7 +4,7 @@ import json
 import flask
 import flask_socketio
 
-from source import config, manager, utils
+from source import config, manager, utils, content
 
 
 TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])
@@ -15,18 +15,18 @@ socketio = flask_socketio.SocketIO(app)
 room_manager = manager.RoomManager()
 
 room_manager.event_bus.subscribe(
-    "gpt-response",
+    "pros-response",
     lambda data: socketio.emit(
-        "gpt-message",
-        data.get("content"),
+        "pros-message",
+        data.get("data"),
         room=data.get("room")
     )
 )
 room_manager.event_bus.subscribe(
-    "gemini-response",
+    "cons-response",
     lambda data: socketio.emit(
-        "gemini-message",
-        data.get("content"),
+        "cons-message",
+        data.get("data"),
         room=data.get("room")
     )
 )
@@ -43,13 +43,13 @@ def handle_tts(data):
     room.set_event(side)
 
 
-@socketio.on("gpt-message")
+@socketio.on("model-message")
 def handle_model(data, code):
     if not data:
         return
 
     room = room_manager.get_room(code)
-    room.threads["gpt"].enqueue_input(
+    room.threads["pros"].enqueue_input(
         data.get("message", "").strip()
     )
 
@@ -59,24 +59,21 @@ def handle_message(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
-    content = {
-        "name": name,
-        "message": message_text,
-        "timestamp": utils.get_utc_timestamp(),
-        "is_typing": False,
-        "is_playing": True
-    }
+    data = content.MessageContent(
+        name=name,
+        type="user",
+        message=message_text,
+        is_playing=True
+    ).to_dict()
 
     if not (code and message_text) or code not in room_manager.list_rooms():
         return
 
-    # 메시지 저장 및 브로드캐스트
     room = room_manager.get_room(code)
-    room.append_message(content)
+    room.append_message(data)
 
-    # 로그 기록 및 GPT 응답 호출
-    socketio.emit("message", content, room=code)
-    handle_model(content, code)
+    socketio.emit("message", data, room=code)
+    handle_model(data, code)
 
     utils.log_event("Send", name, message_text)
 
@@ -86,21 +83,22 @@ def handle_typing(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
-    content = {
-        "name": name,
-        "message": message_text,
-        "is_typing": True,
-    }
+    data = content.MessageContent(
+        name=name,
+        type="user",
+        message=message_text,
+        is_typing=True
+    ).to_dict()
 
     if not code or code not in room_manager.list_rooms():
         return
 
     # 실시간 타이핑 메시지 전송
-    socketio.emit("message", content, room=code)
+    socketio.emit("message", data, room=code)
 
     # 일정 길이 이상 메시지면 GPT 반응 확률적으로 호출
     if len(message_text) > 70 and random.randint(0, 1) == 1:
-        handle_model(content, code)
+        handle_model(data, code)
 
     utils.log_event("Keystroke", name, message_text)
 
@@ -110,16 +108,16 @@ def handle_live_toggle(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     status = data.get("status", "offline")
-    content = {
-        "name": name,
-        "message": f"{name} has gone {status}",
-        "timestamp": utils.get_utc_timestamp(),
-    }
+    data = content.MessageContent(
+        name=name,
+        type="system",
+        message=f"{name} is now {status}"
+    ).to_dict()
 
     if not code or code not in room_manager.list_rooms():
         return
 
-    socketio.emit("notification", content, room=code)
+    socketio.emit("notification", data, room=code)
 
     utils.log_event("Toggle", name, status)
 
@@ -129,24 +127,22 @@ def handle_send_topic(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     topic = data.get("topic", "").strip()
-    content = {
-        "name": name,
-        "message": f"토론 주제는 '{topic}' 입니다.",
-        "timestamp": utils.get_utc_timestamp(),
-        "is_typing": False,
-        "is_playing": True
-    }
+    data = content.MessageContent(
+        name=name,
+        type="system",
+        message=f"토론 주제는 '{topic}' 입니다.",
+        is_playing=True
+    ).to_dict()
 
     if not (code and topic) or code not in room_manager.list_rooms():
         return
 
-    # 메시지 저장
     room = room_manager.get_room(code)
-    room.append_message(content)
-    # GPT 처리 함수 호출
-    handle_model(content, code)
+    room.append_message(data)
 
-    utils.log_event("Send", name, content.get("message"))
+    handle_model(data, code)
+
+    utils.log_event("Send", name, data.get("message"))
 
 
 @socketio.on("connect")
@@ -154,11 +150,11 @@ def handle_connect():
     code = flask.session.get("room")
     topic = flask.session.get("topic")
     name = flask.session.get("name", "user")
-    content = {
-        "name": name,
-        "message": f"{name} has entered the room",
-        "timestamp": utils.get_utc_timestamp(),
-    }
+    data = content.MessageContent(
+        name=name,
+        type="system",
+        message=f"{name} has entered the room"
+    ).to_dict()
 
     # 세션이나 유효한 방이 없으면 연결 중단
     if not (code and topic) or code not in room_manager.list_rooms():
@@ -169,19 +165,20 @@ def handle_connect():
     room.add_member()
 
     flask_socketio.join_room(code)
-    socketio.emit("notification", content, room=code)
+    socketio.emit("notification", data, room=code)
 
-    utils.log_event("Connect", name, content.get("message"))
+    utils.log_event("Connect", name, data.get("message"))
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
-    content = {
-        "name": name,
-        "message": "has left the room"
-    }
+    data = content.MessageContent(
+        name=name,
+        type="system",
+        message=f"{name} has left the room"
+    ).to_dict()
 
     if not code:
         return
@@ -189,7 +186,7 @@ def handle_disconnect():
     flask_socketio.leave_room(code)
     # 퇴장 메시지 전송
     flask_socketio.send(
-        content,
+        data,
         to=code
     )
     if code in room_manager.list_rooms():
@@ -198,7 +195,7 @@ def handle_disconnect():
         if not condition:
             room_manager.remove_room(code)
 
-    utils.log_event("Disconnect", name, content.get("message"))
+    utils.log_event("Disconnect", name, data.get("message"))
 
 
 @app.route("/room")
@@ -226,8 +223,8 @@ def home():
     if flask.request.method == "POST":
         name = "user"  # 기본 이름
         topic = flask.request.form.get("topic", "").strip()
-        model_pro = flask.request.form.get("model_pro")
-        model_con = flask.request.form.get("model_con")
+        model_pros = flask.request.form.get("model_pros")
+        model_cons = flask.request.form.get("model_cons")
 
         if not topic:
             return flask.render_template(
@@ -236,13 +233,11 @@ def home():
                 random_topics=random_topics
             )
 
-        code = room_manager.create_room()
+        code = room_manager.create_room(model_pros, model_cons)
 
         flask.session["room"] = code
         flask.session["topic"] = topic
         flask.session["name"] = name
-        flask.session["model_pro"] = model_pro
-        flask.session["model_con"] = model_con
 
         return flask.redirect(flask.url_for("room"))
 

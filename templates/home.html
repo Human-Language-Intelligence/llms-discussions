@@ -14,16 +14,16 @@
     <form method="post" class="buttons">
       <h3>찬성/반대 측 모델을 선택하세요</h3>
       <div class="model-select">
-        <label>찬성 (Pro):
-          <select name="model_pro">
-            <option value="chatgpt" {% if model_pro=='gpt' %}selected{% endif %}>ChatGPT</option>
-            <option value="gemini" {% if model_pro=='gemini' %}selected{% endif %}>Gemini</option>
+        <label>찬성 (Pros):
+          <select name="model_pros">
+            <option value="chatgpt" {% if model_pros=='gpt' %}selected{% endif %}>ChatGPT</option>
+            <option value="gemini" {% if model_pros=='gemini' %}selected{% endif %}>Gemini</option>
           </select>
         </label>
-        <label style="margin-left: 16px;">반대 (Con):
-          <select name="model_con">
-            <option value="gemini" {% if model_con=='gemini' %}selected{% endif %}>Gemini</option>
-            <option value="chatgpt" {% if model_con=='gpt' %}selected{% endif %}>ChatGPT</option>
+        <label style="margin-left: 16px;">반대 (Cons):
+          <select name="model_cons">
+            <option value="gemini" {% if model_cons=='gemini' %}selected{% endif %}>Gemini</option>
+            <option value="chatgpt" {% if model_cons=='gpt' %}selected{% endif %}>ChatGPT</option>
           </select>
         </label>
       </div>

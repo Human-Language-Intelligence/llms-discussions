@@ -5,7 +5,7 @@ from .config import CONFIG as _CONFIG
 
 
 class Room:
-    def __init__(self, room_id, event_bus=None):
+    def __init__(self, room_id, model_pros="gpt", model_cons="gemini", event_bus=None):
         self.room_id = room_id
         self.event_bus = event_bus
         self.lock = threading.Lock()
@@ -13,26 +13,33 @@ class Room:
         self.count = 0
         self.messages = []
         self.threads = {
-            'gpt': worker.ModelWorker(
-                "gpt",
-                chatgpt.ChatGPT(_CONFIG["default"]["HISTORY.POSITIVE"]),
+            "pros": worker.ModelWorker(
+                self,
+                "pros",
+                self.select_model(model_pros, "pros"),
                 tts.TTS(1),
-                self
             ),
-            'gemini': worker.ModelWorker(
-                "gemini",
-                gemini.Gemini(_CONFIG["default"]["HISTORY.NEGATIVE"]),
-                tts.TTS(3),
-                self
+            "cons": worker.ModelWorker(
+                self,
+                "cons",
+                self.select_model(model_cons, "cons"),
+                tts.TTS(3)
             )
         }
 
-        self.threads['gpt'].set_output_queue(
-            self.threads['gemini'].input_queue
+        self.threads["pros"].set_output_queue(
+            self.threads["cons"].input_queue
         )
-        self.threads['gemini'].set_output_queue(
-            self.threads['gpt'].input_queue
+        self.threads["cons"].set_output_queue(
+            self.threads["pros"].input_queue
         )
+
+    def select_model(self, model, side):
+        prompt_key = "HISTORY.POSITIVE" if side == "pros" else "HISTORY.NEGATIVE"
+        prompt = _CONFIG["default"][prompt_key]
+
+        model_cls = chatgpt.ChatGPT if model == "gpt" else gemini.Gemini
+        return model_cls(prompt)
 
     def append_message(self, message):
         with self.lock:

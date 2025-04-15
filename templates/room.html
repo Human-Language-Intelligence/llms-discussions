@@ -6,9 +6,9 @@
     <div id="room-container" data-room="{{ code }}"></div>
     <div class="messages scrollbar" id="messages">
       {% for msg in messages %}
-      <div class="message {{ 'user1' if msg.name == user1Name else 'user2' }}">
+      <div class="message {{ 'user1' if msg.name == user1Name else user2Name }}">
         <div class="bubble">
-          <span class="name {{ 'user1' if msg.name == user1Name else 'user2' }}">{{ msg.name }}</span>
+          <span class="name {{ 'user1' if msg.name == user1Name else user2Name }}">{{ msg.name }}</span>
           <p>{{ msg.message }}</p>
         </div>
         <span class="timestamp">{{ msg.timestamp }}</span>
@@ -30,30 +30,31 @@
 </div>
 
 <script>
-  var socketIO = io();
-  var isLive = true; // default to live
+  const socketIO = io();
 
   const roomCode = document.getElementById("room-container").getAttribute("data-room");
+  const messageBoxes = document.getElementById("messages");
+  // const messageInput = document.getElementById("message");
+
+  let user1Name = "gemini"; //"{{ session['name'] }}";
+  let user2Name = "The Other User"; // TODO
+  let isUserNearBottom = true;
+  let isLive = true; // default to live
+
   console.log("room code:", roomCode);
 
-  const messageBoxes = document.getElementById("messages");
-  const user1Name = "gemini"; //"{{ session['name'] }}";
-  const user2Name = "The Other User"; // TODO
+  const isNearBottom = () => {
+    const threshold = 500;
+    const distanceFromBottom = messageBoxes.scrollHeight - messageBoxes.scrollTop - messageBoxes.clientHeight;
+    return distanceFromBottom < threshold;
+  };
 
-  let isUserNearBottom = true;
-
-  // const scrollDown = () => {
-  //   messages.scrollTop = messages.scrollHeight;
-  // };
   const scrollDown = () => {
-    // 사용자가 메시지 목록의 아래쪽에 충분히 가까우면 스크롤 다운
-    const threshold = 500; // 사용자가 이 값보다 더 가까이 있을 때 자동으로 스크롤 다운
-    const positionFromBottom =
-      messageBoxes.scrollHeight -
-      (messageBoxes.scrollTop + messageBoxes.clientHeight);
-
-    if (positionFromBottom < threshold) {
-      messageBoxes.scrollTop = messageBoxes.scrollHeight;
+    if (isNearBottom()) {
+      messageBoxes.scrollTo({
+        top: messageBoxes.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -68,90 +69,59 @@
     }
   };
 
-  const createMessage = (name, msg) => {
-    const isAdmin = name === "admin";
-    const userClass = isAdmin ? "admin" : name === user1Name ? "user1" : "user2";
-    let content = "";
+  const createChatMessage = ({
+    name,
+    message,
+    timestamp = new Date().toLocaleString(),
+    role = "user" // "user", "admin", "pros", "cons"
+  }) => {
+    const isAdmin = role === "admin";
+    const isPros = role === "pros";
+    const isCons = role === "cons";
 
-    if (userClass === "admin") {
-      content = `
-      <div class="message ${userClass}">
-        <div class="bubble">
-          <span class="name">${name}</span>
-          <p>${msg}</p>
-        </div>
-      </div>
-      `;
-    } else {
-      content = `
-      <div class="message ${userClass}">
-        <div class="bubble">
-          <div class="profile">
-            <img src="./static/User.png" alt="user" class="logo">
-            <span class="name">${name}</span>
-          </div>
-          <p>${msg}</p>
-        </div>
-        <span class="timestamp">${new Date().toLocaleString()}</span>
-      </div>
-      `;
-    }
-    messageBoxes.insertAdjacentHTML("beforeend", content);
+    const userClass = isAdmin
+      ? "admin"
+      : role === "user"
+        ? (name === user1Name ? "user1" : "user2")
+        : isPros
+          ? "pros-response"
+          : "cons-response";
 
-    if (isUserNearBottom) {
-      scrollDown();
-    } else {
-      showNewMessageAlert();
-    }
-  };
+    // 내부에서 avatar 자동 결정
+    const avatar = isAdmin
+      ? ""
+      : isPros
+        ? "./static/ChatGPT.png"
+        : isCons
+          ? "./static/Gemini.png"
+          : "./static/User.png";
 
-  const createGPTMessage = (chatgptResponse) => {
-    let content = "";
+    const profileBlock = isAdmin
+      ? `<span class="name">${name}</span>`
+      : `
+      <div class="profile">
+        <img src="${avatar}" alt="${role}" class="logo">
+        <span class="name">${name}</span>
+      </div>`;
 
-    const formattedResponse = chatgptResponse.replace(/\n/g, "<br>");
-    content += `
-    <div class="message chatgpt-response">
+    const formattedMessage = message.replace(/\n/g, "<br>");
+
+    const content = `
+    <div class="message ${userClass}">
       <div class="bubble">
-          <div class="profile">
-            <img src="./static/ChatGPT.png" alt="ChatGPT" class="logo">
-            <span class="name">ChatGPT - 찬성 측</span>
-          </div>
-          <p>${formattedResponse}</p>
+        ${profileBlock}
+        <p>${formattedMessage}</p>
       </div>
-      <span class="timestamp">${new Date().toLocaleString()}</span>
+      ${isAdmin ? "" : `<span class="timestamp">${timestamp}</span>`}
     </div>
-    `;
+  `;
+
     messageBoxes.insertAdjacentHTML("beforeend", content);
 
     if (isUserNearBottom) {
       scrollDown();
     } else {
-      showNewMessageAlert();
-    }
-  };
-
-  const createGeminiMessage = (geminiResponse) => {
-    let content = "";
-
-    const formattedResponse = geminiResponse.replace(/\n/g, "<br>");
-    content += `
-    <div class="message gemini-response">
-        <div class="bubble">
-            <div class="profile">
-              <img src="./static/Gemini.png" alt="Gemini" class="logo">
-              <span class="name">Gemini - 반대 측</span>
-            </div>
-            <p>${formattedResponse}</p>
-        </div>
-        <span class="timestamp gemini">${new Date().toLocaleString()}</span>
-    </div>
-    `;
-    messageBoxes.insertAdjacentHTML("beforeend", content);
-
-    if (isUserNearBottom) {
-      scrollDown();
-    } else {
-      showNewMessageAlert();
+      toggleNewMessageAlert(true);
     }
   };
 
@@ -160,10 +130,9 @@
     const userClass = isUser1 ? "user1" : "user2";
     const textAlignStyle = isUser1 ? "flex-end" : "flex-start";
 
+    // 타이핑이 비어 있으면 기존 메시지를 삭제
     if (typingText === "") {
-      const existingTypingMessage = document.querySelector(
-        `.${userClass}.${name}-typing-message`
-      );
+      const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
       if (existingTypingMessage) {
         existingTypingMessage.remove();
       }
@@ -172,6 +141,7 @@
 
     const sideLabel = name === "gpt" ? "찬성" : "반대";
     const formattedTyping = typingText.replace(/\n/g, "<br>");
+
     const typingContent = `
     <div class="message typing-message ${userClass} ${name}-typing-message">
       <div class="bubble" style="align-self: ${textAlignStyle};">
@@ -181,20 +151,83 @@
         </div>
         <p>${formattedTyping}</p>
       </div>
-      <span class="timestamp"> ${name} is typing ... </span>
+      <span class="timestamp">${name} is typing ...</span>
     </div>
-    `;
-    const existingTypingMessage = document.querySelector(
-      `.${userClass}.${name}-typing-message`
-    );
+  `;
 
-    if (existingTypingMessage) {
-      existingTypingMessage.innerHTML = typingContent;
-    } else {
+    const existingTypingMessage = document.querySelector(`.${userClass}.${name}-typing-message`);
+
+    // 기존 메시지가 없으면 새 메시지를 추가
+    if (!existingTypingMessage) {
       messageBoxes.insertAdjacentHTML("beforeend", typingContent);
+    } else {
+      // 기존 메시지가 있으면 내용을 갱신
+      existingTypingMessage.innerHTML = typingContent;
     }
 
     scrollDown();
+  };
+
+  const handleMessage = (data, side) => {
+    const isUser1 = data.name === user1Name;
+    const userClass = isUser1 ? "user1" : "user2";
+
+    if (data.is_typing) {
+      showTyping(side, data.message);
+    } else {
+      createChatMessage({
+        name: data.name,
+        message: data.message,
+        role: side,
+      });
+
+      handleTypingMessage(userClass)
+
+      if (data.audio_base64) {
+        playAudio(data.audio_base64, side);
+      }
+    }
+  };
+
+  const handleTypingMessage = (side, isUser1 = false, simulateRemoval = false) => {
+    const userClass = isUser1 ? "user1" : "user2";
+    const typingSelector = `.${userClass}.${side}-typing-message, .${side}-typing-message`;
+
+    const existingTypingMessage = document.querySelector(typingSelector);
+    if (existingTypingMessage) {
+      if (simulateRemoval) {
+        simulateTypingRemoval(existingTypingMessage);
+      } else {
+        existingTypingMessage.remove();
+      }
+    }
+  };
+
+  function simulateTypingRemoval(element, delay = 100) {
+    const messageElement = element.querySelector(".bubble p");
+    if (!messageElement) return;
+
+    const words = messageElement.innerText.split(" ");
+    let i = words.length;
+
+    const removeWord = () => {
+      if (i >= 0) {
+        messageElement.innerText = words.slice(0, i).join(" ");
+        i--;
+        setTimeout(removeWord, delay);
+      }
+    };
+
+    removeWord();
+  }
+
+  const playAudio = (audioBase64, side) => {
+    const audio = new Audio("data:audio/ogg;base64," + audioBase64);
+    audio.play();
+    audio.onended = function () {
+      socketIO.emit("tts-finished", { side, room: roomCode });
+      console.log(`TTS finished: ${side}, room: ${roomCode}`);
+    };
   };
 
   const createNotification = (msg) => {
@@ -207,51 +240,27 @@
     messageBoxes.scrollTop = messageBoxes.scrollHeight;
   };
 
-  function showNewMessageAlert() {
-    const alertBox = document.getElementById("new-message-alert");
-    if (alertBox) alertBox.classList.remove("hidden");
-  }
-
-  function hideNewMessageAlert() {
-    const alertBox = document.getElementById("new-message-alert");
-    if (alertBox) alertBox.classList.add("hidden");
-  }
-
   function scrollDownAndHideAlert() {
     setTimeout(() => {
-      const messageBoxes = document.getElementById("messages"); // 다시 한 번 안전하게 가져오기
-      const lastMessage = messageBoxes?.lastElementChild;
+      const messageBoxes = document.getElementById("messages");
+      if (!messageBoxes) return;
 
+      const lastMessage = messageBoxes.lastElementChild;
       if (lastMessage) {
         lastMessage.scrollIntoView({ behavior: "smooth", block: "end" });
       } else {
         messageBoxes.scrollTop = messageBoxes.scrollHeight;
       }
 
-      hideNewMessageAlert();
-    }, 50); // 약간의 delay 줘서 DOM 렌더 완료 후 작동
+      toggleNewMessageAlert(false);
+    }, 50);
   }
 
-  function simulateTypingRemoval(element) {
-    const messageElement = element.querySelector(".bubble p");
-    const typingText = messageElement.innerText;
-    const words = typingText.split(" ");
-    const wordCount = words.length;
+  function toggleNewMessageAlert(show = true) {
+    const alertBox = document.getElementById("new-message-alert");
+    if (!alertBox) return;
 
-    // Simulate removing words with a slower delay
-    const delay = 100; // Adjust the delay to control the speed
-    let i = wordCount;
-
-    function removeWord() {
-      if (i >= 0) {
-        const updatedText = words.slice(0, i).join(" ");
-        messageElement.innerText = updatedText;
-        i--;
-        setTimeout(removeWord, delay);
-      }
-    }
-
-    removeWord();
+    alertBox.classList.toggle("hidden", !show);
   }
 
   // function toggleButtonText() {
@@ -278,6 +287,11 @@
     }
   });
 
+  messageBoxes.scrollTo({
+    top: messageBoxes.scrollHeight,
+    behavior: 'smooth'
+  });
+
   messageBoxes.addEventListener("scroll", () => {
     const threshold = 100;
     const positionFromBottom =
@@ -286,25 +300,30 @@
     isUserNearBottom = positionFromBottom < threshold;
 
     if (isUserNearBottom) {
-      hideNewMessageAlert();
+      toggleNewMessageAlert(false);
     }
   });
 
-  messageBoxes.addEventListener("input", function () {
-    const typingText = messageBoxes.value.trim();
-    if (isLive) {
-      socketIO.emit("typing", {
-        is_typing: typingText !== "",
-        message: typingText,
-      });
-    }
-  });
+  // messageInput.addEventListener("input", function () {
+  //   const typingText = messageInput.value.trim();
+  //   if (isLive) {
+  //     socketIO.emit("typing", {
+  //       is_typing: typingText !== "",
+  //       message: typingText,
+  //     });
+  //   }
+  // });
 
-  messageBoxes.addEventListener("keydown", function (event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      sendMessage();
-    }
+  // messageInput.addEventListener("keydown", function (event) {
+  //   if (event.key === "Enter") {
+  //     event.preventDefault();
+  //     sendMessage();
+  //   }
+  // });
+
+  socketIO.on("notification", function (data) {
+    const message = data.message;
+    createNotification(message);
   });
 
   socketIO.on("connect", function () {
@@ -316,88 +335,20 @@
     if (data.is_typing) {
       showTyping(data.name, data.message);
     } else {
-      createMessage(data.name, data.message);
-      const isUser1 = data.name === user1Name;
-      const userClass = isUser1 ? "user1" : "user2";
-      const existingTypingMessage = document.querySelector(
-        `.${userClass}.${data.name}-typing-message`
-      );
-      if (existingTypingMessage) {
-        existingTypingMessage.remove();
-      }
+      createChatMessage({
+        name: data.name,
+        message: data.message,
+        role: "user",
+      });
+      removeTypingMessage(data.name, data.name === user1Name);
     }
   });
 
-  socketIO.on("gpt-message", (data) => {
-    if (data.is_typing) {
-      showTyping("gpt", data.message);
-    } else {
-      createGPTMessage(data.message);
-      const isUser1 = data.name === user1Name;
-      const userClass = isUser1 ? "user1" : "user2";
-      const existingTypingMessage = document.querySelector(
-        `.${userClass}.ChatGPT-typing-message`
-      );
-      if (existingTypingMessage) {
-        existingTypingMessage.remove();
-      }
-      if (data.audio_base64) {
-        const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
-        audio.play();
-        audio.onended = function () {
-          socketIO.emit("tts-finished", { side: "gpt", room: roomCode });
-          console.log("room code:", roomCode);
-        };
-      }
-    }
-  });
+  socketIO.on("pros-message", (data) => handleMessage(data, "pros"));
+  socketIO.on("cons-message", (data) => handleMessage(data, "cons"));
 
-  socketIO.on("gemini-message", (data) => {
-    if (data.is_typing) {
-      showTyping("gemini", data.message);
-    } else {
-      createGeminiMessage(data.message);
-      const isUser1 = data.name === user1Name;
-      const userClass = isUser1 ? "user1" : "user2";
-      const existingTypingMessage = document.querySelector(
-        `.${userClass}.Gemini-typing-message`
-      );
-      if (existingTypingMessage) {
-        existingTypingMessage.remove();
-      }
-      if (data.audio_base64) {
-        const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
-        audio.play();
-        audio.onended = function () {
-          socketIO.emit("tts-finished", { side: "gemini", room: roomCode });
-          console.log("room code:", roomCode);
-        };
+  socketIO.on("clear-pros-response", () => handleTypingMessage("pros", false, true));
+  socketIO.on("clear-cons-response", () => handleTypingMessage("cons", false, true));
 
-      }
-    }
-  });
-
-  socketIO.on("clear-gpt-response", () => {
-    const existingTypingMessage = document.querySelector(
-      ".ChatGPT-typing-message"
-    );
-    if (existingTypingMessage) {
-      simulateTypingRemoval(existingTypingMessage);
-    }
-  });
-
-  socketIO.on("clear-gemini-response", () => {
-    const existingTypingMessage = document.querySelector(
-      ".Gemini-typing-message"
-    );
-    if (existingTypingMessage) {
-      simulateTypingRemoval(existingTypingMessage);
-    }
-  });
-
-  socketIO.on("notification", function (data) {
-    const message = data.message;
-    createNotification(message);
-  });
 </script>
 {% endblock %}

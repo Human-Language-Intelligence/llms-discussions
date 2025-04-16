@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <div class="flex-container">
   <div class="half left-panel">
     <section class="message-box">
@@ -165,7 +166,6 @@
       </div>
     </div>
   `;
-
     messageBoxes.insertAdjacentHTML("beforeend", content);
 
     if (isUserNearBottom) {

@@ -30,7 +30,7 @@
       <a href="{{ url_for('home') }}" class="home-button">다른 주제로 토론 시작</a>
     </section>
   </div>
-  
+
   <div class="half right-panel">
     <section class="history-box">
       <div id="history-container" class="scrollbar">
@@ -70,36 +70,6 @@
 
   const clearMessages = () => {
     messageBoxes.innerHTML = '';
-  };
-
-  const appendToHistory = ({ name, message, role, timestamp = new Date().toLocaleString() }) => {
-    const historyContainer = document.getElementById("history-container");
-
-    const avatar = name === "gpt"
-      ? "./static/ChatGPT.png"
-      : name === "gemini"
-        ? "./static/Gemini.png"
-        : "./static/User.png";
-
-    const roleLabel = role === "pros" ? "찬성" : "반대";
-    const userClass = role === user1Role ? "user1" : "user2";
-    const formattedMsg = message.replace(/\n/g, "<br>");
-
-    const content = `
-      <div class="history-message ${userClass}">
-        <div class="bubble">
-          <div class="profile">
-            <img src="${avatar}" alt="${role}" class="logo" />
-            <strong style="margin-left: 0.5rem;">${name.toUpperCase()} (${roleLabel})</strong>
-          </div>
-          <p style="margin-top: 0.5rem;">${formattedMsg}</p>
-        </div>
-        <span class="timestamp">${timestamp}</span>
-      </div>
-    `;
-
-    historyContainer.insertAdjacentHTML("beforeend", content);
-    historyContainer.scrollTop = historyContainer.scrollHeight;  // 스크롤 아래로
   };
 
   const createNotification = (msg) => {
@@ -175,6 +145,36 @@
     }
   };
 
+  const appendToHistory = ({ data, timestamp = new Date().toLocaleString() }) => {
+    const historyContainer = document.getElementById("history-container");
+
+    const avatar = data.name === "gpt"
+      ? "./static/ChatGPT.png"
+      : data.name === "gemini"
+        ? "./static/Gemini.png"
+        : "./static/User.png";
+
+    const roleLabel = data.role === "pros" ? "찬성" : "반대";
+    const userClass = data.role === user1Role ? "user1" : "user2";
+    const formattedMsg = data.message.replace(/\n/g, "<br>");
+
+    const content = `
+      <div class="history-message ${userClass}">
+        <div class="bubble">
+          <div class="profile">
+            <img src="${avatar}" alt="${data.role}" class="logo" />
+            <strong style="margin-left: 0.5rem;">${data.name.toUpperCase()} (${roleLabel})</strong>
+          </div>
+          <p style="margin-top: 0.5rem;">${formattedMsg}</p>
+        </div>
+        <span class="timestamp">${timestamp}</span>
+      </div>
+    `;
+
+    historyContainer.insertAdjacentHTML("beforeend", content);
+    historyContainer.scrollTop = historyContainer.scrollHeight;  // 스크롤 아래로
+  };
+
   const showTyping = (name, role, typingText) => {
     const isUser1 = role === user1Role;
     const userClass = isUser1 ? "user1" : "user2";
@@ -234,7 +234,7 @@
       handleTypingMessage(data.role)
 
       if (data.audio_base64) {
-        playAudio(data.audio_base64, data.role, data);
+        playAudio(data);
       }
     }
   };
@@ -253,17 +253,16 @@
     }
   };
 
-  const playAudio = (audioBase64, role, data) => {
-    const audio = new Audio("data:audio/ogg;base64," + audioBase64);
+  const playAudio = (data) => {
+    const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
     audio.play();
     audio.onended = function () {
 
-      appendToHistory({ name: data.name, message: data.message, role: data.role, timestamp: new Date().toLocaleString(), });
-
+      appendToHistory({ data: data, timestamp: new Date().toLocaleString() });
       clearMessages();
 
-      socketIO.emit("tts-finished", { role: role, room: roomCode });
-      console.log(`TTS finished: ${role}, room: ${roomCode}`);
+      socketIO.emit("tts-finished", { role: data.role, room: roomCode });
+      console.log(`TTS finished: ${data.role}, room: ${roomCode}`);
     };
   };
 

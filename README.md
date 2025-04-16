@@ -23,7 +23,7 @@ GCP.LOCATION = us-west1
 GEMINI.MODEL_NAME = gemini-2.0-flash-lite
 ```
 
-Replace the '@@@' placeholder in the config.ini file with the appropriate value. Before that, you must create credential keys for both GCP and OpenAI.
+Replace the `@@@` placeholder in the "config.ini" file with the appropriate value. Before that, you must create credential keys for both GCP and OpenAI.
 - [GCP Service Accouunt credentials](https://cloud.google.com/iam/docs/keys-create-delete)
 - [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
 

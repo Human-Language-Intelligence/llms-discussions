@@ -56,9 +56,8 @@
               </label>
               <div class="model-selector">
                 <select name="model_pros" id="model-pros" class="model-select" required>
-                  <option value="">AI 선택</option>
-                  <option value="gpt" selected>ChatGPT</option>
-                  <option value="gemini">Gemini</option>
+                  <option value="gpt" {% if model_pros=='gpt' %}selected{% endif %}>ChatGPT</option>
+                  <option value="gemini" {% if model_pros=='gemini' %}selected{% endif %}>Gemini</option>
                 </select>
               </div>
               <div class="model-preview" id="pros-preview">
@@ -75,9 +74,8 @@
               </label>
               <div class="model-selector">
                 <select name="model_cons" id="model-cons" class="model-select" required>
-                  <option value="">AI 선택</option>
-                  <option value="gemini" selected>Gemini</option>
-                  <option value="gpt">ChatGPT</option>
+                  <option value="gemini" {% if model_cons=='gemini' %}selected{% endif %}>Gemini</option>
+                  <option value="gpt" {% if model_cons=='gpt' %}selected{% endif %}>ChatGPT</option>
                 </select>
               </div>
               <div class="model-preview" id="cons-preview">

@@ -1,50 +1,135 @@
 {% extends 'base.html' %}
 {% block content %}
-<!-- 에러 메시지 toast 영역 -->
-<div id="error-toast">
+<div id="error-toast" class="error-toast" role="alert" aria-live="assertive">
 </div>
 
-<div class="container">
-  <section>
-    <h2>AI들의 토론을 지켜보세요!</h2>
-    <h4>ChatGPT와 Gemini의 토론이 시작됩니다.</h4>
-  </section>
+<main class="main-container" id="main-content">
+  <div class="home-wrapper">
+    <div id="error-toast">
+    </div>
+    <section class="intro-section">
+      <div class="hero-content">
+        <h1 class="hero-title">AI들의 토론을 지켜보세요!</h1>
+        <p class="hero-subtitle">ChatGPT와 Gemini가 펼치는 흥미진진한 토론</p>
+        <p class="hero-description">
+          두 AI가 다양한 주제로 토론하는 모습을 실시간으로 관찰하고,
+          당신도 직접 참여할 수 있습니다. 인공지능의 사고 과정과
+          논리적 추론을 경험해보세요.
+        </p>
 
-  <section>
-    <form method="post" class="buttons">
-      <h3>찬성/반대 측 모델을 선택하세요</h3>
-      <div class="model-select">
-        <label>찬성 (Pros):
-          <select name="model_pros">
-            <option value="gpt" {% if model_pros=='gpt' %}selected{% endif %}>ChatGPT</option>
-            <option value="gemini" {% if model_pros=='gemini' %}selected{% endif %}>Gemini</option>
-          </select>
-        </label>
-        <label style="margin-left: 16px;">반대 (Cons):
-          <select name="model_cons">
-            <option value="gemini" {% if model_cons=='gemini' %}selected{% endif %}>Gemini</option>
-            <option value="gpt" {% if model_cons=='gpt' %}selected{% endif %}>ChatGPT</option>
-          </select>
-        </label>
+        <div class="hero-features">
+          <div class="feature-item">
+            <div class="feature-icon">🤖</div>
+            <span class="feature-text">AI 실시간 토론</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">💬</div>
+            <span class="feature-text">참여형 채팅</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">📊</div>
+            <span class="feature-text">토론 분석</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">🎯</div>
+            <span class="feature-text">맞춤 주제</span>
+          </div>
+        </div>
       </div>
+    </section>
+    <section class="setup-section">
+      <header class="setup-header">
+        <h2 class="setup-title">토론 시작하기</h2>
+        <p class="setup-subtitle">AI 모델과 주제를 선택해주세요</p>
+      </header>
 
-      <h3>관심있는 주제를 입력해주세요.</h3>
-      <input type="text" placeholder="주제를 입력하세요" name="topic" id="input-topic" value="{{ topic }}" />
-      <button type="submit" name="create" id="create-btn">토론 시작!</button>
+      <form method="post" id="debate-form" novalidate>
+        <fieldset class="model-selection">
+          <legend class="section-label">
+            🥊 AI 모델 선택
+          </legend>
 
-      <h3>이런 토론 주제도 가능해요!</h3>
-      <ul style="list-style: none; padding:0;">
-        {% for t in random_topics %}
-        <li style="margin:8px 0; font-weight:500; cursor:pointer;" onclick="fillInput('{{ t }}')">{{ t }}</li>
-        {% endfor %}
-      </ul>
-    </form>
-  </section>
-</div>
+          <div class="models-grid">
+            <div class="model-group">
+              <label for="model-pros" class="model-label pros">
+                ✅ 찬성 측
+              </label>
+              <div class="model-selector">
+                <select name="model_pros" id="model-pros" class="model-select" required>
+                  <option value="">AI 선택</option>
+                  <option value="gpt" selected>ChatGPT</option>
+                  <option value="gemini">Gemini</option>
+                </select>
+              </div>
+              <div class="model-preview" id="pros-preview">
+                <img src="../static/ChatGPT.png" alt="ChatGPT" class="model-avatar">
+                <div class="model-info">
+                  <h4>ChatGPT</h4>
+                  <p>창의적이고 논리적인 사고</p>
+                </div>
+              </div>
+            </div>
+            <div class="model-group">
+              <label for="model-cons" class="model-label cons">
+                ❌ 반대 측
+              </label>
+              <div class="model-selector">
+                <select name="model_cons" id="model-cons" class="model-select" required>
+                  <option value="">AI 선택</option>
+                  <option value="gemini" selected>Gemini</option>
+                  <option value="gpt">ChatGPT</option>
+                </select>
+              </div>
+              <div class="model-preview" id="cons-preview">
+                <img src="../static/Gemini.png" alt="Gemini" class="model-avatar">
+                <div class="model-info">
+                  <h4>Gemini</h4>
+                  <p>분석적이고 체계적인 접근</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vs-indicator">
+            <span class="vs-text">VS</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="topic-section">
+          <legend class="section-label">
+            💡 토론 주제
+          </legend>
+          <div class="topic-input-group">
+            <label for="topic-input" class="sr-only">토론 주제 입력</label>
+            <input type="text" name="topic" id="topic-input" class="topic-input" placeholder="관심있는 주제를 입력해주세요..."
+              required aria-describedby="topic-help">
+            <button type="submit" name="create" class="start-button">
+              🚀 토론 시작!
+            </button>
+          </div>
+          <div id="topic-help" class="sr-only">
+            토론하고 싶은 주제를 자유롭게 입력하거나 아래 추천 주제를 선택하세요
+          </div>
+        </fieldset>
+
+        <fieldset class="suggestions-section">
+          <legend class="section-label">
+            🎯 이런 주제는 어떠세요?
+          </legend>
+          <ul class="suggestions-grid" role="list">
+            {% for topic in random_topics %}
+            <li class="suggestion-item" role="listitem" onclick="fillInput('{{ topic }}')">{{ topic }}</li>
+            {% endfor %}
+          </ul>
+        </fieldset>
+      </form>
+    </section>
+  </div>
+</main>
 
 <script>
   function fillInput(topic) {
-    const input = document.getElementById("input-topic");
+    const input = document.getElementById("topic-input");
     if (input) {
       input.value = topic;
       input.focus();

@@ -32,8 +32,8 @@ room_manager.event_bus.subscribe(
 )
 
 
-@socketio.on("tts-finished")
-def handle_tts(data):
+@socketio.on("complete")
+def on_tts(data):
     code = data.get("room")
     role = data.get("role")
     if not (code and role):
@@ -42,11 +42,11 @@ def handle_tts(data):
     room = room_manager.get_room(code)
     room.set_event(role)
 
-    utils.log_event("Finished", role)
+    utils.log_event("Complete", role)
 
 
-@socketio.on("model-message")
-def handle_model(data, code):
+@socketio.on("model")
+def on_model(data, code):
     if not data:
         return
 
@@ -56,8 +56,8 @@ def handle_model(data, code):
     )
 
 
-@socketio.on("message")
-def handle_message(data):
+@socketio.on("user")
+def on_user(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
@@ -75,13 +75,13 @@ def handle_message(data):
     room.append_message(data)
 
     socketio.emit("message", data, room=code)
-    handle_model(data, code)
+    on_model(data, code)
 
     utils.log_event("Send", name, message_text)
 
 
 @socketio.on("typing")
-def handle_typing(data):
+def on_typing(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
@@ -100,13 +100,13 @@ def handle_typing(data):
 
     # 일정 길이 이상 메시지면 GPT 반응 확률적으로 호출
     if len(message_text) > 70 and random.randint(0, 1) == 1:
-        handle_model(data, code)
+        on_model(data, code)
 
     utils.log_event("Keystroke", name, message_text)
 
 
-@socketio.on("live-toggle")
-def handle_live_toggle(data):
+@socketio.on("live")
+def on_live(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     status = data.get("status", "offline")
@@ -124,8 +124,8 @@ def handle_live_toggle(data):
     utils.log_event("Toggle", name, status)
 
 
-@socketio.on("send-topic")
-def handle_send_topic(data):
+@socketio.on("start")
+def on_start(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     topic = data.get("topic", "").strip()
@@ -142,13 +142,13 @@ def handle_send_topic(data):
     room = room_manager.get_room(code)
     room.append_message(data)
 
-    handle_model(data, code)
+    on_model(data, code)
 
     utils.log_event("Send", name, data.get("message"))
 
 
 @socketio.on("connect")
-def handle_connect():
+def on_connect():
     code = flask.session.get("room")
     topic = flask.session.get("topic")
     name = flask.session.get("name", "user")
@@ -167,13 +167,13 @@ def handle_connect():
     room.add_member()
 
     flask_socketio.join_room(code)
-    socketio.emit("notification", data, room=code)
+    # socketio.emit("notification", data, room=code)
 
     utils.log_event("Connect", name, data.get("message"))
 
 
 @socketio.on("disconnect")
-def handle_disconnect():
+def on_disconnect():
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     data = content.MessageContent(

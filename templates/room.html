@@ -27,7 +27,7 @@
       <div class="chat-header">
         <h2 class="chat-title">💬 실시간 토론</h2>
         <div class="debate-controls">
-          <button class="control-btn active">🔴 라이브</button>
+          <button class="control-btn active">🔴 음성</button>
           <button class="control-btn secondary">⏸️ 일시정지</button>
           <button class="control-btn secondary">📊 통계</button>
         </div>
@@ -250,8 +250,7 @@
       </li>
       `;
 
-      historyContainer.insertAdjacentHTML("beforeend", content);
-      historyContainer.scrollTop = historyContainer.scrollHeight;  // 스크롤 아래로
+      historyContainer.insertAdjacentHTML("afterbegin", content);
     };
 
     const handleTypingMessage = (role, isUser1 = false, simulateRemoval = false) => {

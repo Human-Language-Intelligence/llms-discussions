@@ -1,421 +1,614 @@
-@supports selector(::-webkit-scrollbar) {
-  .scrollbar::-webkit-scrollbar {
-    background-color: #fff;
-    width: 16px;
-  }
+ :root {
+   --primary-blue: #2563eb;
+   --primary-blue-hover: #1d4ed8;
+   --secondary-blue: #3b82f6;
+   --light-blue: #eff6ff;
+   --pros-color: #10b981;
+   --cons-color: #ef4444;
+   --neutral-gray: #6b7280;
+   --light-gray: #f8fafc;
+   --border-color: #e2e8f0;
+   --text-primary: #1e293b;
+   --text-secondary: #64748b;
+   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+   --border-radius: 12px;
+   --focus-ring: 0 0 0 3px rgb(59 130 246 / 0.5);
+ }
 
-  /* background of the scrollbar except button or resizer */
-  .scrollbar::-webkit-scrollbar-track {
-    background-color: #fff
-  }
+ * {
+   box-sizing: border-box;
+   margin: 0;
+   padding: 0;
+ }
 
-  .scrollbar::-webkit-scrollbar-track:hover {
-    background-color: #f4f4f4
-  }
+ body {
+   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+   font-size: 14px;
+   line-height: 1.6;
+   color: var(--text-primary);
+   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+   min-height: 100vh;
+ }
 
-  /* scrollbar itself */
-  .scrollbar::-webkit-scrollbar-thumb {
-    background-color: #babac0;
-    border-radius: 16px;
-    border: 5px solid #fff
-  }
+ .main-application {
+   display: flex;
+   height: 100vh;
+   max-width: 1600px;
+   margin: 0 auto;
+   gap: 1rem;
+   padding: 1rem;
+ }
 
-  .scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #a0a0a5;
-    border: 4px solid #f4f4f4
-  }
+ /* 왼쪽 메인 패널 - 더 넓게 */
+ .debate-section {
+   flex: 3;
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+ }
 
-  /* set button(top and bottom of the scrollbar) */
-  .scrollbar::-webkit-scrollbar-button {
-    display: none
-  }
-}
+ /* 오른쪽 히스토리 패널 */
+ .history-section {
+   flex: 1;
+   background: white;
+   border-radius: var(--border-radius);
+   box-shadow: var(--shadow-lg);
+   display: flex;
+   flex-direction: column;
+   overflow: hidden;
+ }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+ /* 토론 상태 패널 */
+ .debate-status {
+   background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+   color: white;
+   padding: 1.5rem;
+   border-radius: var(--border-radius);
+   box-shadow: var(--shadow-lg);
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+ }
 
-html {
-  font-family: 'Open Sans', 'Noto Sans KR', sans-serif;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
+ .status-info h1 {
+   font-size: 1.5rem;
+   font-weight: 700;
+   margin-bottom: 0.5rem;
+ }
 
-main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-}
+ .status-info p {
+   opacity: 0.9;
+   font-size: 0.9rem;
+ }
 
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
+ .debate-stats {
+   display: flex;
+   gap: 2rem;
+   text-align: center;
+ }
 
-#error-toast {
-  display: none;
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #ff4d4f;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  z-index: 1000;
-  font-weight: 500;
-}
+ .stat-item {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+ }
 
-.message-box {
-  text-align: left;
-  border-radius: 8px;
-  background-color: #ffffff;
-  /*#f7f7f7;*/
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  /*90%*/
-  max-width: none;
-  overflow-y: auto;
-  padding: 20px;
-  height: 85vh;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  line-height: 150%;
-  /*letter-spacing: 1px;*/
-}
+ .stat-number {
+   font-size: 1.8rem;
+   font-weight: 700;
+   margin-bottom: 0.25rem;
+ }
 
-.messages {
-  overflow-y: auto;
-  max-height: 70vh;
-  padding-top: 25vh;
-}
+ .stat-label {
+   font-size: 0.75rem;
+   opacity: 0.8;
+ }
 
-.message {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 5px;
-  /* align-items: flex-end;  */
-}
+ /* 참가자 정보 패널 */
+ .participants-panel {
+   background: white;
+   border-radius: var(--border-radius);
+   box-shadow: var(--shadow-lg);
+   padding: 1.5rem;
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+ }
 
-.name {
-  font-weight: bold;
-  align-self: flex-start;
-  padding: 3px 0 0 6px;
-}
+ .participant {
+   display: flex;
+   align-items: center;
+   gap: 1rem;
+   flex: 1;
+ }
 
-.bubble {
-  border-radius: 12px;
-  padding: 12px;
-  max-width: 70%;
-  word-wrap: break-word;
-  position: relative;
-  overflow: hidden;
-}
+ .participant.pros {
+   justify-content: flex-start;
+ }
 
-.message.user1 .bubble {
-  align-self: flex-start;
-  background-color: #e5e5ea;
-  /*#28a40f;*/
-  color: black;
-}
+ .participant.cons {
+   justify-content: flex-end;
+   flex-direction: row-reverse;
+ }
 
-.message.user2 .bubble {
-  align-self: flex-end;
-  background-color: #007bff;
-  color: white;
-}
+ .participant-avatar {
+   width: 60px;
+   height: 60px;
+   border-radius: 50%;
+   box-shadow: var(--shadow-md);
+   border: 3px solid var(--pros-color);
+ }
 
-.pros-response .bubble {
-  align-self: flex-start;
-  background-color: #e5e5ea;
-  /*#28a40f;*/
-  color: black;
-}
+ .participant.cons .participant-avatar {
+   border-color: var(--cons-color);
+ }
 
-.cons-response .bubble {
-  align-self: flex-end;
-  background-color: #007bff;
-  color: white;
-}
+ .participant-info h3 {
+   font-size: 1.1rem;
+   font-weight: 600;
+   margin-bottom: 0.25rem;
+ }
 
-.message.admin .bubble {
-  background-color: rgb(3, 3, 108);
-  /* Blue */
-  align-self: center;
-  color: white;
-  text-align: center;
-  border-radius: 7px;
-  padding: 10px;
-}
+ .participant-role {
+   background: var(--pros-color);
+   color: white;
+   padding: 0.25rem 0.75rem;
+   border-radius: 20px;
+   font-size: 0.8rem;
+   font-weight: 500;
+ }
 
-.typing-message.user1 .bubble {
-  align-self: flex-start;
-  background-color: darkgray;
-  /*rgb(221, 221, 221);*/
-  color: white;
-  /*#404040rgb(255, 255, 255)*/
-  ;
-}
+ .participant.cons .participant-role {
+   background: var(--cons-color);
+ }
 
-.typing-message.user2 .bubble {
-  align-self: flex-end;
-  background-color: darkgray;
-  /*(221, 221, 221);*/
-  color: white;
-}
+ .vs-divider {
+   font-size: 2rem;
+   font-weight: 700;
+   color: var(--neutral-gray);
+   margin: 0 2rem;
+ }
 
-.timestamp {
-  font-size: 0.8em;
-  font-style: italic;
-  color: #888;
-  margin-top: 8px;
-  /* align-self: flex-end; */
-}
+ /* 메인 채팅 영역 */
+ .chat-container {
+   background: white;
+   border-radius: var(--border-radius);
+   box-shadow: var(--shadow-lg);
+   display: flex;
+   flex-direction: column;
+   flex: 1;
+   overflow: hidden;
+ }
 
-.message.user1 .timestamp {
-  align-self: flex-start;
-}
+ .chat-header {
+   background: var(--light-gray);
+   padding: 1rem 1.5rem;
+   border-bottom: 1px solid var(--border-color);
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+ }
 
-.message.user2 .timestamp {
-  align-self: flex-end;
-}
+ .chat-title {
+   font-size: 1.1rem;
+   font-weight: 600;
+   color: var(--text-primary);
+ }
 
-.timestamp.cons {
-  align-self: flex-end;
-}
+ .debate-controls {
+   display: flex;
+   gap: 0.75rem;
+ }
 
-.inputs {
-  display: flex;
-  margin-top: 16px;
-}
+ .control-btn {
+   background: var(--primary-blue);
+   color: white;
+   border: none;
+   padding: 0.5rem 1rem;
+   border-radius: 6px;
+   font-size: 0.8rem;
+   cursor: pointer;
+   transition: all 0.2s;
+ }
 
-#message {
-  flex: 2;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  padding: 12px;
-  font-size: 1.2rem;
-}
+ .control-btn:hover {
+   background: var(--primary-blue-hover);
+   transform: translateY(-1px);
+ }
 
-#send-btn {
-  margin-left: 8px;
-  border: none;
-  background-color: #007bff;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1.2rem;
-}
+ .control-btn.secondary {
+   background: var(--neutral-gray);
+ }
 
-#live-btn {
-  margin-left: 8px;
-  border: 2px solid #007bff;
-  background-color: rgb(255, 255, 255);
-  color: rgb(0, 0, 0);
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1.2rem;
-}
+ .control-btn.active {
+   background: var(--pros-color);
+ }
 
-#create-btn {
-  height: 40px;
-  margin-left: 4px;
-  padding: 6px 16px;
-  border-radius: 8px;
-  border: none;
-  background-color: #007bff;
-  color: white;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
+ /* 메시지 영역 */
+ .messages-region {
+   flex: 1;
+   padding: 1.5rem;
+   overflow-y: auto;
+   background: var(--light-gray);
+   position: relative;
+ }
 
-#input-topic {
-  padding: 6px 16px 6px 12px;
-  width: 240px;
-  height: 28px;
-  border-radius: 4px;
-  border: none;
-  background-color: #f4f4f4;
-  color: gray;
-  /*#bcbcbc*/
-  ;
-  font-size: 0.8rem;
-}
+ .messages-list {
+   list-style: none;
+   display: flex;
+   flex-direction: column;
+   gap: 1.5rem;
+ }
 
-.notification {
-  text-align: center;
-  color: gray;
-}
+ .message-item {
+   animation: slideIn 0.4s ease-out;
+ }
 
-.logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-}
+ @keyframes slideIn {
+   from {
+     opacity: 0;
+     transform: translateY(20px) scale(0.95);
+   }
 
-.profile {
-  display: flex;
-  align-items: center;
-}
+   to {
+     opacity: 1;
+     transform: translateY(0) scale(1);
+   }
+ }
 
-.buttons {
-  text-align: center;
-}
+ .message-content {
+   display: flex;
+   flex-direction: column;
+   max-width: 85%;
+ }
 
-.home-button-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 40px;
-  /*position: fixed;
-  bottom: 20px;
-  right: 390px;
-  z-index: 1000;  확실히 버튼이 다른 요소들 위에 오도록 함*/
-}
+ .message-item[data-role="pros"] .message-content {
+   align-self: flex-start;
+ }
 
-.home-button {
-  display: inline-block;
-  background-color: #007bff;
-  /* 버튼 배경 색 */
-  color: white;
-  /* 텍스트 색 */
-  padding: 10px 15px;
-  text-decoration: none;
-  /* 밑줄 제거 */
-  border: 2px solid #007bff;
-  border-radius: 5px;
-  /* 모서리를 둥글게 */
-  /*font-weight: bold;  글자 굵게 */
-  transition: background-color 0.3s;
-  /* 배경 색 변경 애니메이션 */
-}
+ .message-item[data-role="cons"] .message-content {
+   align-self: flex-end;
+ }
 
-.home-button:hover {
-  /*background-color: #2980b9;  마우스 오버 시 배경 색 변경 */
+ .message-header {
+   display: flex;
+   align-items: center;
+   gap: 0.75rem;
+   margin-bottom: 0.75rem;
+ }
 
-  background-color: white;
-  /* 버튼 배경 색 */
-  color: #007bff;
-  border: 2px solid #007bff;
-}
+ .message-item[data-role="cons"] .message-header {
+   flex-direction: row-reverse;
+ }
 
-.new-message-alert {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  z-index: 1000;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  transition: opacity 0.3s ease;
-}
+ .speaker-avatar {
+   width: 40px;
+   height: 40px;
+   border-radius: 50%;
+   box-shadow: var(--shadow-sm);
+   border: 2px solid var(--pros-color);
+ }
 
-.new-message-alert.hidden {
-  display: none;
-}
+ .message-item[data-role="cons"] .speaker-avatar {
+   border-color: var(--cons-color);
+ }
 
-.flex-container {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100vh;
-}
+ .speaker-info {
+   display: flex;
+   flex-direction: column;
+   gap: 0.25rem;
+ }
 
-.half {
-  flex: 1;
-  height: 100vh;
-  overflow-y: auto;
-  box-sizing: border-box;
-  padding: 1rem;
-}
+ .message-item[data-role="cons"] .speaker-info {
+   text-align: right;
+ }
 
-/* 왼쪽 패널 스타일 */
-.left-panel {
-  background-color: #f9f9ff;
-  border-right: 1px solid #ddd;
-  display: flex;
-  flex-direction: column;
-  padding: 1rem;
-}
+ .speaker-name {
+   font-weight: 600;
+   font-size: 0.9rem;
+   color: var(--text-primary);
+ }
 
-/* 오른쪽 패널 스타일 */
-.right-panel {
-  background-color: #f8f9fa;
-  border-left: 1px solid #ddd;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  height: 100vh;
-  overflow-y: auto;
-}
+ .speaker-role {
+   background: var(--pros-color);
+   color: white;
+   padding: 0.125rem 0.5rem;
+   border-radius: 12px;
+   font-size: 0.7rem;
+   font-weight: 500;
+   align-self: flex-start;
+ }
 
-#history-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-}
+ .message-item[data-role="cons"] .speaker-role {
+   background: var(--cons-color);
+   align-self: flex-end;
+ }
 
-/* 히스토리 말풍선 스타일 (재사용 가능) */
-.history-message {
-  background-color: white;
-  padding: 1rem;
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
+ .message-bubble {
+   background: white;
+   padding: 1.25rem;
+   border-radius: 20px;
+   box-shadow: var(--shadow-md);
+   border: 1px solid var(--border-color);
+   position: relative;
+ }
 
-.history-box {
-  background-color: white;
-  height: 85vh;
-  max-height: 85vh;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
+ .message-item[data-role="pros"] .message-bubble {
+   border-left: 4px solid var(--pros-color);
+   border-radius: 20px 20px 20px 5px;
+ }
 
-.history-message .timestamp {
-  font-size: 0.8em;
-  font-style: italic;
-  color: #888;
-  margin-top: 8px;
-  align-self: flex-end;
-}
+ .message-item[data-role="cons"] .message-bubble {
+   border-right: 4px solid var(--cons-color);
+   border-radius: 20px 20px 5px 20px;
+ }
 
-.history-message.user1 .timestamp {
-  align-self: flex-start;
-}
+ .message-text {
+   color: var(--text-primary);
+   line-height: 1.6;
+   margin: 0;
+ }
 
-.history-message.user2 .timestamp {
-  align-self: flex-end;
-}
+ .message-actions {
+   display: flex;
+   gap: 0.5rem;
+   margin-top: 0.75rem;
+   opacity: 0;
+   transition: opacity 0.2s;
+ }
 
-.history-message.user1 .bubble {
-  background-color: #e5e5ea;
-  color: black;
-  align-self: flex-start;
-}
+ .message-item:hover .message-actions {
+   opacity: 1;
+ }
 
-.history-message.user2 .bubble {
-  background-color: #007bff;
-  color: white;
-  align-self: flex-end;
-}
+ .action-btn {
+   background: none;
+   border: 1px solid var(--border-color);
+   color: var(--text-secondary);
+   padding: 0.25rem 0.5rem;
+   border-radius: 4px;
+   font-size: 0.7rem;
+   cursor: pointer;
+   transition: all 0.2s;
+ }
+
+ .action-btn:hover {
+   background: var(--light-gray);
+   color: var(--text-primary);
+ }
+
+ .message-timestamp {
+   font-size: 0.75rem;
+   color: var(--text-secondary);
+   margin-top: 0.5rem;
+   text-align: center;
+ }
+
+ /* 입력 영역 */
+ .input-panel {
+   background: white;
+   padding: 1.5rem;
+   border-top: 1px solid var(--border-color);
+   border-radius: 0 0 var(--border-radius) var(--border-radius);
+ }
+
+ .input-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 1rem;
+ }
+
+ .input-title {
+   font-size: 0.9rem;
+   font-weight: 600;
+   color: var(--text-primary);
+ }
+
+ .message-tools {
+   display: flex;
+   gap: 0.5rem;
+ }
+
+ .tool-btn {
+   background: var(--light-gray);
+   border: 1px solid var(--border-color);
+   color: var(--text-secondary);
+   padding: 0.375rem 0.75rem;
+   border-radius: 6px;
+   font-size: 0.75rem;
+   cursor: pointer;
+   transition: all 0.2s;
+ }
+
+ .tool-btn:hover {
+   background: var(--primary-blue);
+   color: white;
+   border-color: var(--primary-blue);
+ }
+
+ .input-container {
+   display: flex;
+   gap: 1rem;
+   align-items: flex-end;
+ }
+
+ .message-input {
+   flex: 1;
+   padding: 1rem;
+   border: 2px solid var(--border-color);
+   border-radius: 12px;
+   font-family: inherit;
+   font-size: 0.9rem;
+   resize: vertical;
+   min-height: 50px;
+   max-height: 120px;
+   transition: all 0.2s;
+   background: var(--light-gray);
+ }
+
+ .message-input:focus {
+   outline: none;
+   border-color: var(--primary-blue);
+   background: white;
+   box-shadow: var(--focus-ring);
+ }
+
+ .submit-button {
+   background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+   color: white;
+   border: none;
+   padding: 1rem 1.5rem;
+   border-radius: 12px;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.2s;
+   white-space: nowrap;
+ }
+
+ .submit-button:hover {
+   transform: translateY(-2px);
+   box-shadow: var(--shadow-lg);
+ }
+
+ /* 히스토리 패널 스타일 */
+ .panel-header {
+   background: linear-gradient(135deg, var(--neutral-gray), #475569);
+   color: white;
+   padding: 1.5rem;
+ }
+
+ .panel-title {
+   font-size: 1.1rem;
+   font-weight: 600;
+   margin-bottom: 0.5rem;
+ }
+
+ .panel-description {
+   font-size: 0.8rem;
+   opacity: 0.9;
+ }
+
+ .history-region {
+   flex: 1;
+   padding: 1rem;
+   overflow-y: auto;
+   background: var(--light-gray);
+ }
+
+ .history-list {
+   list-style: none;
+   display: flex;
+   flex-direction: column;
+   gap: 0.75rem;
+ }
+
+ .history-item {
+   background: white;
+   padding: 1rem;
+   border-radius: 8px;
+   box-shadow: var(--shadow-sm);
+   border-left: 3px solid var(--pros-color);
+   transition: all 0.2s;
+ }
+
+ .history-item:hover {
+   box-shadow: var(--shadow-md);
+   transform: translateX(2px);
+ }
+
+ .history-item[data-role="cons"] {
+   border-left-color: var(--cons-color);
+ }
+
+ .history-meta {
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+   margin-bottom: 0.5rem;
+ }
+
+ .history-avatar {
+   width: 24px;
+   height: 24px;
+   border-radius: 50%;
+ }
+
+ .history-speaker {
+   font-weight: 600;
+   font-size: 0.8rem;
+ }
+
+ .history-message {
+   font-size: 0.85rem;
+   color: var(--text-primary);
+   line-height: 1.5;
+ }
+
+ .panel-navigation {
+   padding: 1rem 1.5rem;
+   background: white;
+   border-top: 1px solid var(--border-color);
+ }
+
+ .home-link {
+   width: 100%;
+   background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+   color: white;
+   border: none;
+   padding: 0.75rem;
+   border-radius: 8px;
+   font-weight: 500;
+   cursor: pointer;
+   text-decoration: none;
+   display: inline-block;
+   text-align: center;
+   transition: transform 0.2s;
+ }
+
+ .home-link:hover {
+   transform: translateY(-1px);
+ }
+
+ /* 스크롤바 */
+ .messages-region::-webkit-scrollbar,
+ .history-region::-webkit-scrollbar {
+   width: 6px;
+ }
+
+ .messages-region::-webkit-scrollbar-thumb,
+ .history-region::-webkit-scrollbar-thumb {
+   background: var(--border-color);
+   border-radius: 3px;
+ }
+
+ /* 반응형 */
+ @media (max-width: 1024px) {
+   .main-application {
+     flex-direction: column;
+     gap: 0.5rem;
+   }
+
+   .debate-section {
+     flex: 1;
+   }
+
+   .history-section {
+     flex: 0 0 250px;
+   }
+
+   .debate-stats {
+     display: none;
+   }
+
+   .participants-panel {
+     padding: 1rem;
+   }
+
+   .participant-avatar {
+     width: 50px;
+     height: 50px;
+   }
+ }

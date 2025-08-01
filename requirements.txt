@@ -1,7 +1,0 @@
-flask
-flask-socketio
-thefuzz
-openai
-google-api-python-client
-google-cloud-texttospeech
-google-cloud-aiplatform

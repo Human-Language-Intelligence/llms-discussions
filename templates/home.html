@@ -5,9 +5,7 @@
 
 <main class="main-container" id="main-content">
   <div class="home-wrapper">
-    <div id="error-toast">
-    </div>
-    <section class="intro-section">
+    <section class="hero-section">
       <div class="hero-content">
         <h1 class="hero-title">AI들의 토론을 지켜보세요!</h1>
         <p class="hero-subtitle">ChatGPT와 Gemini가 펼치는 흥미진진한 토론</p>
@@ -17,7 +15,7 @@
           논리적 추론을 경험해보세요.
         </p>
 
-        <div class="hero-features">
+        <div class="features-grid">
           <div class="feature-item">
             <div class="feature-icon">🤖</div>
             <span class="feature-text">AI 실시간 토론</span>
@@ -37,6 +35,7 @@
         </div>
       </div>
     </section>
+
     <section class="setup-section">
       <header class="setup-header">
         <h2 class="setup-title">토론 시작하기</h2>
@@ -55,12 +54,12 @@
                 ✅ 찬성 측
               </label>
               <div class="model-selector">
-                <select name="model_pros" id="model-pros" class="model-select" required>
+                <select name="model_pros" id="model-pros" class="model-select input" required>
                   <option value="gpt" {% if model_pros=='gpt' %}selected{% endif %}>ChatGPT</option>
                   <option value="gemini" {% if model_pros=='gemini' %}selected{% endif %}>Gemini</option>
                 </select>
               </div>
-              <div class="model-preview" id="pros-preview">
+              <div class="model-preview card">
                 <img src="../static/ChatGPT.png" alt="ChatGPT" class="model-avatar">
                 <div class="model-info">
                   <h4>ChatGPT</h4>
@@ -68,17 +67,18 @@
                 </div>
               </div>
             </div>
+
             <div class="model-group">
               <label for="model-cons" class="model-label cons">
                 ❌ 반대 측
               </label>
               <div class="model-selector">
-                <select name="model_cons" id="model-cons" class="model-select" required>
+                <select name="model_cons" id="model-cons" class="model-select input" required>
                   <option value="gemini" {% if model_cons=='gemini' %}selected{% endif %}>Gemini</option>
                   <option value="gpt" {% if model_cons=='gpt' %}selected{% endif %}>ChatGPT</option>
                 </select>
               </div>
-              <div class="model-preview" id="cons-preview">
+              <div class="model-preview card">
                 <img src="../static/Gemini.png" alt="Gemini" class="model-avatar">
                 <div class="model-info">
                   <h4>Gemini</h4>
@@ -99,9 +99,9 @@
           </legend>
           <div class="topic-input-group">
             <label for="topic-input" class="sr-only">토론 주제 입력</label>
-            <input type="text" name="topic" id="topic-input" class="topic-input" placeholder="관심있는 주제를 입력해주세요..."
+            <input type="text" name="topic" id="topic-input" class="topic-input input" placeholder="관심있는 주제를 입력해주세요..."
               required aria-describedby="topic-help">
-            <button type="submit" name="create" class="start-button">
+            <button type="submit" name="create" class="start-button btn btn-primary">
               🚀 토론 시작!
             </button>
           </div>
@@ -116,7 +116,9 @@
           </legend>
           <ul class="suggestions-grid" role="list">
             {% for topic in random_topics %}
-            <li class="suggestion-item" role="listitem" onclick="fillInput('{{ topic }}')">{{ topic }}</li>
+            <li class="suggestion-item" role="listitem" onclick="fillInput('{{ topic }}')">
+              {{ topic }}
+            </li>
             {% endfor %}
           </ul>
         </fieldset>
@@ -134,16 +136,118 @@
     }
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
+  // 폼 유효성 검사 개선
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("debate-form");
+    const topicInput = document.getElementById("topic-input");
+    const modelPros = document.getElementById("model-pros");
+    const modelCons = document.getElementById("model-cons");
+
+    // 에러 메시지 표시
     const errorMsg = "{{ error | default('') }}";
     if (errorMsg) {
-      const toast = document.getElementById("error-toast");
-      toast.innerText = errorMsg;
-      toast.style.display = "block";
+      showErrorToast(errorMsg);
+    }
 
+    // 같은 모델 선택 방지
+    const validateModels = () => {
+      if (modelPros.value === modelCons.value) {
+        const otherOption = modelPros.value === 'gpt' ? 'gemini' : 'gpt';
+        modelCons.value = otherOption;
+        updateModelPreview('cons', otherOption);
+      }
+    };
+
+    modelPros.addEventListener('change', (e) => {
+      updateModelPreview('pros', e.target.value);
+      validateModels();
+    });
+
+    modelCons.addEventListener('change', (e) => {
+      updateModelPreview('cons', e.target.value);
+      validateModels();
+    });
+
+    // 모델 프리뷰 업데이트
+    function updateModelPreview(side, model) {
+      const preview = document.querySelector(`#${side}-preview`) ||
+        document.querySelector(`.model-group:${side === 'pros' ? 'first' : 'last'}-child .model-preview`);
+      if (!preview) return;
+
+      const img = preview.querySelector('img');
+      const title = preview.querySelector('h4');
+      const description = preview.querySelector('p');
+
+      if (model === 'gpt') {
+        img.src = '../static/ChatGPT.png';
+        img.alt = 'ChatGPT';
+        title.textContent = 'ChatGPT';
+        description.textContent = '창의적이고 논리적인 사고';
+      } else {
+        img.src = '../static/Gemini.png';
+        img.alt = 'Gemini';
+        title.textContent = 'Gemini';
+        description.textContent = '분석적이고 체계적인 접근';
+      }
+    }
+
+    // 폼 제출 전 검증
+    form.addEventListener('submit', (e) => {
+      const topic = topicInput.value.trim();
+
+      if (!topic) {
+        e.preventDefault();
+        showErrorToast('토론 주제를 입력해주세요.');
+        topicInput.focus();
+        return;
+      }
+
+      if (topic.length < 3) {
+        e.preventDefault();
+        showErrorToast('토론 주제는 3글자 이상 입력해주세요.');
+        topicInput.focus();
+        return;
+      }
+
+      // 제출 버튼 비활성화 (중복 제출 방지)
+      const submitBtn = form.querySelector('.start-button');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '🔄 준비 중...';
+    });
+
+    // 토픽 입력 개선
+    topicInput.addEventListener('input', (e) => {
+      const value = e.target.value;
+      const submitBtn = form.querySelector('.start-button');
+
+      if (value.trim().length >= 3) {
+        submitBtn.classList.remove('btn-secondary');
+        submitBtn.classList.add('btn-primary');
+      } else {
+        submitBtn.classList.remove('btn-primary');
+        submitBtn.classList.add('btn-secondary');
+      }
+    });
+  });
+
+  // 에러 토스트 표시 함수
+  function showErrorToast(message) {
+    const toast = document.getElementById("error-toast");
+    toast.textContent = message;
+    toast.style.display = "block";
+
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, 4000);
+  }
+
+  // 추천 주제 클릭 애니메이션
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('suggestion-item')) {
+      e.target.style.transform = 'scale(0.95)';
       setTimeout(() => {
-        toast.style.display = "none";
-      }, 3000);
+        e.target.style.transform = '';
+      }, 150);
     }
   });
 </script>

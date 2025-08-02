@@ -9,340 +9,359 @@
       </div>
       <div class="debate-stats">
         <div class="stat-item">
-          <div class="stat-number">12</div>
+          <div class="stat-number" id="total-messages">0</div>
           <div class="stat-label">총 발언</div>
         </div>
         <div class="stat-item">
-          <div class="stat-number">8:4</div>
+          <div class="stat-number" id="debate-ratio">0:0</div>
           <div class="stat-label">찬성:반대</div>
         </div>
         <div class="stat-item">
-          <div class="stat-number">5m</div>
+          <div class="stat-number" id="debate-time">0m</div>
           <div class="stat-label">진행시간</div>
         </div>
       </div>
     </section>
-    <section class="participants-panel"></section>
+
     <section class="chat-container">
       <div class="chat-header">
         <h2 class="chat-title">💬 실시간 토론</h2>
         <div class="debate-controls">
-          <button class="control-btn active">🔴 음성</button>
-          <button class="control-btn secondary">⏸️ 일시정지</button>
-          <button class="control-btn secondary">📊 통계</button>
+          <button class="control-btn active" id="audio-btn">🔴 음성</button>
+          <button class="control-btn secondary" id="pause-btn">⏸️ 일시정지</button>
+          <button class="control-btn secondary" id="stats-btn">📊 통계</button>
         </div>
       </div>
+
       <div class="messages-region" role="log" aria-live="polite">
-        <ul class="messages-list" id="messages-list">
-        </ul>
+        <div class="active-messages" id="active-messages">
+          <!-- 각 role별 현재 메시지 컨테이너 -->
+          <div class="role-message-container" id="pros-container" data-role="pros"></div>
+          <div class="role-message-container" id="cons-container" data-role="cons"></div>
+          <div class="role-message-container" id="user-container" data-role="user"></div>
+        </div>
       </div>
     </section>
+
     <section class="input-panel">
       <form class="input-container" onsubmit="sendMessage(event)">
-        <textarea id="message-input" class="message-input" placeholder="토론에 대한 의견을 나눠보세요..." rows="1"></textarea>
-        <button type="submit" class="submit-button">📤 전송</button>
+        <textarea id="message-input" class="message-input input" placeholder="토론에 대한 의견을 나눠보세요..." rows="1"
+          maxlength="500"></textarea>
+        <button type="submit" class="submit-button btn btn-primary">📤 전송</button>
       </form>
-      <!-- <div class="inputs">
-        <input type="text" rows="3" placeholder="Message" name="message" id="message" />
-        <button type="button" name="send" id="send-btn" onClick="sendMessage()">Send</button>
-        <button type="button" name="live" id="live-btn" onClick="toggleButtonText()">Live</button>
-      </div> -->
+      <div class="input-info">
+        <span class="char-count" id="char-count">0/500</span>
+        <span class="input-hint">Enter로 전송, Shift+Enter로 줄바꿈</span>
+      </div>
     </section>
   </div>
+
   <aside class="history-section">
     <header class="panel-header">
       <h2 class="panel-title">📚 토론 히스토리</h2>
       <p class="panel-description">지난 대화 요약</p>
+      <div class="history-controls">
+        <button class="btn btn-secondary" id="export-btn">📁 내보내기</button>
+        <button class="btn btn-secondary" id="clear-history-btn">🗑️ 지우기</button>
+      </div>
     </header>
+
     <div class="history-region">
-      <ul class="history-list" id="history-list"">
+      <ul class="history-list" id="history-list">
+        <!-- 히스토리 아이템들이 여기에 동적으로 추가됩니다 -->
       </ul>
+      <div class="history-empty" id="history-empty">
+        <div class="empty-icon">📝</div>
+        <p>아직 대화 기록이 없습니다</p>
+      </div>
     </div>
-    <div class=" panel-navigation">
-        <a href="{{ url_for('home') }}" class="home-link">🏠 새로운 토론 시작</a>
+
+    <div class="panel-navigation">
+      <a href="{{ url_for('home') }}" class="home-link btn btn-primary">
+        🏠 새로운 토론 시작
+      </a>
     </div>
   </aside>
 </main>
 
 <script type="module">
-  import { createProfileBlock, getUserClass, getRoleLabel } from '../static/js/utils.js';
+  import { io } from "https://cdn.socket.io/4.8.1/socket.io.esm.min.js";
+  import { createProfileBlock, getUserClass, getRoleLabel, getAvatarPath } from '../static/js/utils.js';
 
-  function simulateTypingRemoval(element, delay = 100) {
-    const messageElement = element.querySelector(".bubble p");
-    if (!messageElement) return;
+  const socket = io();
 
-    const words = messageElement.innerText.split(" ");
-    let i = words.length;
+  // 전역 변수
+  let debateStats = {
+    totalMessages: 0,
+    prosMessages: 0,
+    consMessages: 0,
+    startTime: Date.now()
+  };
 
-    const removeWord = () => {
-      if (i >= 0) {
-        messageElement.innerText = words.slice(0, i).join(" ");
-        i--;
-        setTimeout(removeWord, delay);
-      }
-    };
+  let isLive = true;
+  let user1Role = "pros";
 
-    removeWord();
-  }
+  // 각 role별 현재 메시지 저장
+  let currentMessages = {
+    pros: null,
+    cons: null,
+    user: null
+  };
 
-  function scrollDownAndHideAlert() {
-    setTimeout(() => {
-      const messageContainer = document.getElementById("messages-list");
-      if (!messageContainer) return;
+  // DOM 요소들
+  const roomCode = document.getElementById("room-container").getAttribute("data-room");
+  const activeMessages = document.getElementById("active-messages");
+  const historyContainer = document.getElementById("history-list");
+  const messageInput = document.getElementById("message-input");
+  const charCount = document.getElementById("char-count");
+  const historyEmpty = document.getElementById("history-empty");
 
-      const lastMessage = messageContainer.lastElementChild;
-      if (lastMessage) {
-        lastMessage.scrollIntoView({ behavior: "smooth", block: "end" });
-      } else {
-        messageContainer.scrollTop = messageContainer.scrollHeight;
-      }
+  const updateStats = () => {
+    document.getElementById("total-messages").textContent = debateStats.totalMessages;
+    document.getElementById("debate-ratio").textContent = `${debateStats.prosMessages}:${debateStats.consMessages}`;
 
-      toggleNewMessageAlert(false);
-    }, 50);
-  }
+    const elapsed = Math.floor((Date.now() - debateStats.startTime) / 60000);
+    document.getElementById("debate-time").textContent = `${elapsed}m`;
+  };
 
-  function toggleNewMessageAlert(show = true) {
-    const alertBox = document.getElementById("new-message-alert");
-    if (!alertBox) return;
+  const updateHistoryVisibility = () => {
+    const hasHistory = historyContainer.children.length > 0;
+    historyEmpty.classList.toggle("hidden", hasHistory);
+  };
 
-    alertBox.classList.toggle("hidden", !show);
-  }
+  // role별 메시지 업데이트/생성 함수
+  const updateRoleMessage = ({
+    name,
+    message,
+    timestamp = new Date().toLocaleString(),
+    role = "user",
+    is_typing = false
+  }) => {
+    const container = document.getElementById(`${role}-container`);
+    if (!container) return;
 
-  // function toggleButtonText() {
-  //   var button = document.getElementById("live-btn");
-  //   if (button.innerHTML === "Live") {
-  //     button.innerHTML = "UnLive";
-  //     button.classList.remove("live");
-  //     button.classList.add("unlive");
-  //     isLive = false;
-  //     socket.emit("live", { status: "UnLive" });
-  //   } else {
-  //     button.innerHTML = "Live";
-  //     button.classList.remove("unlive");
-  //     button.classList.add("live");
-  //     isLive = true;
-  //     socket.emit("live", { status: "Live" });
-  //   }
-  // }
+    const roleLabel = getRoleLabel(role);
+    const formattedMessage = message.replace(/\n/g, "<br>");
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const roomCode = document.getElementById("room-container").getAttribute("data-room");
-    const messageContainer = document.getElementById("messages-list");
-    const historyContainer = document.getElementById("history-list");
-    const messageInput = document.getElementById("message");
-    // const alertBox = document.getElementById("new-message-alert");
-
-    let user1Role = "pros";
-    let isUserNearBottom = true;
-    let isLive = true; // default to live
-
-    const isNearBottom = () => {
-      const threshold = 500;
-      const distanceFromBottom = messageContainer.scrollHeight - messageContainer.scrollTop - messageContainer.clientHeight;
-      return distanceFromBottom < threshold;
-    };
-
-    const scrollDown = () => {
-      if (isNearBottom()) {
-        messageContainer.scrollTo({
-          top: messageContainer.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
-    };
-
-    const clearMessages = () => {
-      messageContainer.innerHTML = '';
-    };
-
-    const sendMessage = () => {
-      if (message.value.trim() !== "") {
-        socket.emit("user", { data: messageInput.value });
-        if (!isLive) {
-          socket.emit("typing", { is_typing: false, message: "" });
-        }
-        messageInput.value = "";
-      }
-    };
-
-    const showTyping = (name, role, typingText) => {
-      const isUser1 = role === user1Role;
-      const textAlignStyle = isUser1 ? "flex-end" : "flex-start";
-      const userClass = getUserClass(role, user1Role);
-      const sideLabel = getRoleLabel(role);
-
-      if (typingText === "") {
-        const existingTypingMessage = document.querySelector(
-          `.${userClass}.${role}-typing-message`
-        );
-        if (existingTypingMessage) {
-          existingTypingMessage.remove();
-        }
-        return;
-      }
-
-      const formattedTyping = typingText.replace(/\n/g, "<br>");
-      const typingContent = `
-      <div class="message typing-message ${userClass} ${role}-typing-message">
-        <div class="bubble" style="align-self: ${textAlignStyle};">
-          ${createProfileBlock(name, role)}
-          <p>${formattedTyping}</p>
-        </div>
-        <span class="timestamp">${name} is typing ...</span>
+    // 타이핑 중이면 타이핑 인디케이터 추가
+    const typingIndicator = is_typing ? `
+      <div class="typing-indicator">
+        <span></span><span></span><span></span>
       </div>
-      `;
+    ` : '';
 
-      const existingTypingMessage = document.querySelector(`.${userClass}.${role}-typing-message`);
-
-      if (!existingTypingMessage) {
-        messageContainer.insertAdjacentHTML("beforeend", typingContent);
-      } else {
-        existingTypingMessage.innerHTML = typingContent;
-      }
-
-      scrollDown();
-    };
-
-    const createChatMessage = ({
-      name,
-      message,
-      timestamp = new Date().toLocaleString(),
-      role = "user" // "user", "admin", "pros", "cons"
-    }) => {
-      const userClass = getUserClass(role, user1Role);
-      const profileBlock = createProfileBlock(name, role);
-      const formattedMessage = message.replace(/\n/g, "<br>");
-
-      const content = `
-      <li class="message-item" data-role="${role}">
+    container.innerHTML = `
+      <div class="message-item ${is_typing ? 'typing-message' : ''}" data-role="${role}">
         <div class="message-content">
-          ${profileBlock}
-          <div class="message-bubble">
-            <p class="message-text">${formattedMessage}</p>
+          <div class="message-header">
+            <img src="${getAvatarPath(name, role)}" alt="${name}" class="speaker-avatar">
+            <div class="speaker-info">
+              <h3 class="speaker-name">${name.toUpperCase()}</h3>
+              <span class="speaker-role">${roleLabel}</span>
+            </div>
           </div>
-          <time class="message-timestamp">${timestamp}</time>
+          <div class="message-bubble ${is_typing ? 'typing-bubble' : ''}">
+            <p class="message-text">${formattedMessage}</p>
+            ${typingIndicator}
+          </div>
+          ${!is_typing ? `<time class="message-timestamp">${timestamp}</time>` : ''}
         </div>
-      </li>`;
-      messageContainer.insertAdjacentHTML("beforeend", content);
+      </div>
+    `;
 
-      if (isUserNearBottom) {
-        scrollDown();
-      } else {
-        toggleNewMessageAlert(true);
-      }
-    };
+    // 메시지가 완료되면 현재 메시지 저장
+    if (!is_typing && message) {
+      currentMessages[role] = {
+        name,
+        message,
+        timestamp,
+        role
+      };
 
-    const appendToHistory = ({
-      data,
-      timestamp = new Date().toLocaleString()
-    }) => {
-      const userClass = getUserClass(data.role, user1Role);
-      const profileBlock = createProfileBlock(data.name, data.role);
-      const formattedMessage = data.message.replace(/\n/g, "<br>");
+      // 통계 업데이트
+      debateStats.totalMessages++;
+      if (role === 'pros') debateStats.prosMessages++;
+      if (role === 'cons') debateStats.consMessages++;
+      updateStats();
+    }
+  };
 
-      const content = `
-      <li class="history-item" data-role="${data.role}">
-        <div class="history-meta">
-          ${profileBlock}
+  // 히스토리에 추가
+  const appendToHistory = ({ data, timestamp = new Date().toLocaleString() }) => {
+    const roleLabel = getRoleLabel(data.role);
+    const formattedMessage = data.message.replace(/\n/g, "<br>");
+
+    const historyElement = document.createElement('li');
+    historyElement.className = 'history-item';
+    historyElement.setAttribute('data-role', data.role);
+
+    historyElement.innerHTML = `
+      <div class="history-meta">
+        <img src="${getAvatarPath(data.name, data.role)}" alt="${data.name}" class="speaker-avatar">
+        <div class="speaker-info">
+          <h3 class="speaker-name">${data.name.toUpperCase()}</h3>
+          <span class="speaker-role">${roleLabel}</span>
         </div>
-        <p class="history-message">${formattedMessage}</p>
-        <time class="message-timestamp">${data.timestamp}</time>
-      </li>
-      `;
+      </div>
+      <p class="history-message">${formattedMessage}</p>
+      <time class="message-timestamp">${data.timestamp || timestamp}</time>
+    `;
 
-      historyContainer.insertAdjacentHTML("afterbegin", content);
-    };
+    historyContainer.insertBefore(historyElement, historyContainer.firstChild);
+    updateHistoryVisibility();
+  };
 
-    const handleTypingMessage = (role, isUser1 = false, simulateRemoval = false) => {
-      const userClass = isUser1 ? "user1" : "user2";
-      const typingSelector = `.${userClass}.${role}-typing-message, .${role}-typing-message`;
+  // 메시지 전송
+  const sendMessage = (event) => {
+    event.preventDefault();
+    const message = messageInput.value.trim();
 
-      const existingTypingMessage = document.querySelector(typingSelector);
-      if (existingTypingMessage) {
-        if (simulateRemoval) {
-          simulateTypingRemoval(existingTypingMessage);
-        } else {
-          existingTypingMessage.remove();
-        }
-      }
-    };
+    if (message && socket) {
+      socket.emit("user", { data: message });
+      messageInput.value = "";
+      updateCharCount();
+      messageInput.style.height = 'auto';
+    }
+  };
 
-    const handleMessage = (data) => {
-      const isUser1 = data.role === user1Role;
-      const userClass = isUser1 ? "user1" : "user2";
+  // 문자 수 업데이트
+  const updateCharCount = () => {
+    const count = messageInput.value.length;
+    charCount.textContent = `${count}/500`;
+    charCount.style.color = count > 400 ? 'var(--error-500)' : 'var(--text-muted)';
+  };
 
-      if (data.is_typing) {
-        showTyping(data.name, data.role, data.message);
-      } else {
-        createChatMessage({
-          name: data.name,
-          message: data.message,
-          role: data.role,
-        });
+  // 오디오 재생
+  const playAudio = (data) => {
+    if (!data.audio_base64) return;
 
-        handleTypingMessage(data.role)
+    const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
+    audio.play().catch(console.error);
 
-        if (data.audio_base64) {
-          playAudio(data);
-        }
-      }
-    };
+    audio.onended = function () {
+      appendToHistory({ data: data, timestamp: new Date().toLocaleString() });
 
-    const playAudio = (data) => {
-      const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
-      audio.play();
-      audio.onended = function () {
-        appendToHistory({ data: data, timestamp: new Date().toLocaleString() });
-        clearMessages();
-
+      if (socket) {
         socket.emit("complete", { role: data.role, room: roomCode });
         console.log(`Complete: ${data.role}, room: ${roomCode}`);
-      };
+      }
     };
+  };
 
-    // messageInput.addEventListener("input", function () {
-    //   const typingText = messageInput.value.trim();
-    //   if (isLive) {
-    //     socket.emit("typing", {
-    //       is_typing: typingText !== "",
-    //       message: typingText,
-    //     });
-    //   }
-    // });
+  // 이벤트 리스너들
+  document.addEventListener("DOMContentLoaded", () => {
+    // 메시지 입력 이벤트
+    messageInput.addEventListener("input", () => {
+      updateCharCount();
 
-    // messageInput.addEventListener("keydown", function (event) {
-    //   if (event.key === "Enter") {
-    //     event.preventDefault();
-    //     sendMessage();
-    //   }
-    // });
+      // 자동 높이 조절
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    });
 
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage(event);
+      }
+    });
+
+    // 컨트롤 버튼들
+    document.getElementById('audio-btn')?.addEventListener('click', (e) => {
+      e.target.classList.toggle('active');
+      // 오디오 토글 로직
+    });
+
+    document.getElementById('pause-btn')?.addEventListener('click', (e) => {
+      e.target.classList.toggle('active');
+      // 일시정지 로직
+    });
+
+    document.getElementById('clear-history-btn')?.addEventListener('click', () => {
+      if (confirm('히스토리를 모두 삭제하시겠습니까?')) {
+        historyContainer.innerHTML = '';
+        updateHistoryVisibility();
+      }
+    });
+
+    document.getElementById('export-btn')?.addEventListener('click', () => {
+      // 히스토리 내보내기 로직
+      const historyData = Array.from(historyContainer.children).map(item => ({
+        role: item.getAttribute('data-role'),
+        name: item.querySelector('.speaker-name').textContent,
+        message: item.querySelector('.history-message').textContent,
+        timestamp: item.querySelector('.message-timestamp').textContent
+      }));
+
+      const blob = new Blob([JSON.stringify(historyData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `debate-history-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    updateStats();
+    updateHistoryVisibility();
+  });
+
+  // Socket.IO 이벤트 핸들러들
+  if (typeof socket !== 'undefined') {
     socket.on("connect", function () {
-      var userTopic = "{{ topic }}";
+      const userTopic = "{{ topic }}";
       socket.emit("start", { topic: userTopic });
     });
 
     socket.on("message", (data) => {
-      if (data.is_typing) {
-        showTyping(data.name, data.role, data.message);
-      } else {
-        createChatMessage({
-          name: data.name,
-          message: data.message,
-          role: "user",
-        });
-        handleTypingMessage(data.role);
+      updateRoleMessage({
+        name: data.name,
+        message: data.message,
+        role: "user",
+        is_typing: data.is_typing || false
+      });
+    });
+
+    socket.on("pros-message", (data) => {
+      updateRoleMessage({
+        name: data.name,
+        message: data.message,
+        role: data.role,
+        is_typing: data.is_typing || false
+      });
+
+      if (!data.is_typing && data.audio_base64) {
+        playAudio(data);
       }
     });
 
-    socket.on("pros-message", (data) => handleMessage(data));
-    socket.on("cons-message", (data) => handleMessage(data));
+    socket.on("cons-message", (data) => {
+      updateRoleMessage({
+        name: data.name,
+        message: data.message,
+        role: data.role,
+        is_typing: data.is_typing || false
+      });
 
-    socket.on("clear-pros-response", () => handleTypingMessage("pros", false, true));
-    socket.on("clear-cons-response", () => handleTypingMessage("cons", false, true));
+      if (!data.is_typing && data.audio_base64) {
+        playAudio(data);
+      }
+    });
 
-    console.log("room code:", roomCode);
-  });
+    socket.on("clear-pros-response", () => {
+      const container = document.getElementById('pros-container');
+      if (container) container.innerHTML = '';
+    });
 
+    socket.on("clear-cons-response", () => {
+      const container = document.getElementById('cons-container');
+      if (container) container.innerHTML = '';
+    });
+  }
+
+  // 전역 함수로 노출
+  window.sendMessage = sendMessage;
+
+  console.log("Room code:", roomCode);
 </script>
 {% endblock %}

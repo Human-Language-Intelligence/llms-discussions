@@ -3,7 +3,12 @@
 ## Install requirements
 
 ``` shell
-pip install -U -r requirements.txt
+uv venv .venv
+source .venv/bin/activate
+```
+
+```shell
+uv sync
 ```
 
 ## Config
@@ -32,5 +37,3 @@ Replace the `@@@` placeholder in the "config.ini" file with the appropriate valu
 ```shell
 flask run --debug
 ```
-
-

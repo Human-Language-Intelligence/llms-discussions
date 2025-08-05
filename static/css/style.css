@@ -597,6 +597,10 @@ body {
   box-shadow: var(--shadow);
 }
 
+.message-text {
+  overflow-wrap: break-word;
+}
+
 .message-timestamp {
   font-size: 0.75rem;
   color: var(--text-light);

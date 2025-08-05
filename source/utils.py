@@ -22,5 +22,5 @@ def log_event(
 ) -> None:
     # 이벤트를 로그에 기록
     line = f"{get_utc_timestamp()} - {username} - {event_type}: {additional_info}\n"
-    with open("events.log", "a") as log_file:
+    with open("events.log", "a", encoding="utf-8") as log_file:
         log_file.write(line)

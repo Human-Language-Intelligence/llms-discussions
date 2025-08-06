@@ -46,7 +46,7 @@ class Room:
 
     def append_message(self, message):
         with self.lock:
-            if self.count > 10:
+            if self.count >= 10:
                 self.stop_threads()
             self.count += 1
             self.messages.append(message)

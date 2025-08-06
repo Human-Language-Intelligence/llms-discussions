@@ -61,7 +61,6 @@ def on_user(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
-    current_role = data.get("role", "pros")
     data = content.MessageContent(
         name=name,
         role="user",
@@ -72,7 +71,6 @@ def on_user(data):
     if not (code and message_text) or code not in room_manager.list_rooms():
         return
 
-    print(current_role, message_text)
     room = room_manager.get_room(code)
     room.user_message(message_text)
     socketio.emit("message", data, room=code)

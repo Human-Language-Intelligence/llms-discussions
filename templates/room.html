@@ -98,8 +98,9 @@
     startTime: Date.now()
   };
 
+  let currentData = null;
   let audio = null;
-  let currentRole = null;
+  let audioOn = true;
 
   // 각 role별 현재 메시지 저장
   let currentMessages = {
@@ -181,7 +182,6 @@
         timestamp,
         role
       };
-      currentRole = role;
 
       // 통계 업데이트
       debateStats.totalMessages++;
@@ -225,7 +225,7 @@
     const message = messageInput.value.trim();
 
     if (message && socket) {
-      socket.emit("user", { data: message, role: currentRole });
+      socket.emit("user", { data: message });
       messageInput.value = "";
       updateCharCount();
       messageInput.style.height = 'auto';
@@ -240,30 +240,37 @@
   };
 
   const stopAudio = () => {
-    if (audio) {
+    if (audio && isAudioPlaying()) {
       audio.pause();
       audio.currentTime = 0;
     }
   };
 
+  const complete = (data) => {
+    appendToHistory({
+      data: data,
+      timestamp: new Date(data.timestamp).toLocaleString()
+    });
+    stopAudio();
+
+    if (socket) {
+      socket.emit("complete", { role: data.role, room: roomCode });
+      console.log(`Complete: ${data.role}, room: ${roomCode}`);
+    }
+  };
+
   // 오디오 재생
   const playAudio = (data) => {
+    if (!data.audio_base64 || !audioOn) {
+      complete(data);
+      return;
+    }
     const url = "data:audio/ogg;base64," + data.audio_base64;
 
     audio = new Audio(url);
-    audio.onended = () => {
-      appendToHistory({
-        data: data,
-        timestamp: new Date(data.timestamp).toLocaleString()
-      });
+    audio.onended = () => complete(data);
 
-      if (socket) {
-        socket.emit("complete", { role: data.role, room: roomCode });
-        console.log(`Complete: ${data.role}, room: ${roomCode}`);
-      }
-    };
-
-    if (isAudioPlaying()) stopAudio();
+    stopAudio();
     audio.play().catch(console.error);
   };
 
@@ -287,8 +294,11 @@
 
     // 컨트롤 버튼들
     document.getElementById('audio-btn')?.addEventListener('click', (e) => {
-      e.target.classList.toggle('active');
       // 오디오 토글 로직
+      audioOn = !audioOn;
+      e.target.classList.toggle('active', audioOn);
+
+      if (!audioOn) complete(currentData);
     });
 
     document.getElementById('pause-btn')?.addEventListener('click', (e) => {
@@ -347,6 +357,8 @@
     });
 
     socket.on("pros-message", (data) => {
+      currentData = data;
+
       updateRoleMessage({
         name: data.name,
         message: data.message,
@@ -360,6 +372,8 @@
     });
 
     socket.on("cons-message", (data) => {
+      currentData = data;
+
       updateRoleMessage({
         name: data.name,
         message: data.message,

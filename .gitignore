@@ -175,5 +175,5 @@ cython_debug/
 
 # Custom
 /*.json
-events.log
-config.ini
+/*.log
+/*.ini

@@ -34,7 +34,7 @@ def get_judge_prompt(df, topic="NFT는 예술의 미래인가?"):
     The script of the debate is as follows: {debate_script}
     """
 
-# 💬 GPT-4o 평가 호출
+# GPT-4o 평가 호출
 def gpt_judge(prompt):
     response = client.chat.completions.create(
         model="gpt-4o",

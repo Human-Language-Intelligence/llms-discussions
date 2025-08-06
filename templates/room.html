@@ -37,8 +37,8 @@
         <div class="active-messages" id="active-messages">
           <!-- 각 role별 현재 메시지 컨테이너 -->
           <div class="role-message-container" id="pros-container" data-role="pros"></div>
-          <div class="role-message-container" id="cons-container" data-role="cons"></div>
           <div class="role-message-container" id="user-container" data-role="user"></div>
+          <div class="role-message-container" id="cons-container" data-role="cons"></div>
         </div>
       </div>
     </section>
@@ -98,8 +98,8 @@
     startTime: Date.now()
   };
 
-  let isLive = true;
-  let user1Role = "pros";
+  let audio = null;
+  let currentRole = null;
 
   // 각 role별 현재 메시지 저장
   let currentMessages = {
@@ -107,6 +107,10 @@
     cons: null,
     user: null
   };
+
+  function isAudioPlaying() {
+    return audio && !audio.paused && !audio.ended && audio.currentTime > 0;
+  }
 
   // DOM 요소들
   const roomCode = document.getElementById("room-container").getAttribute("data-room");
@@ -177,6 +181,7 @@
         timestamp,
         role
       };
+      currentRole = role;
 
       // 통계 업데이트
       debateStats.totalMessages++;
@@ -187,7 +192,10 @@
   };
 
   // 히스토리에 추가
-  const appendToHistory = ({ data, timestamp = new Date().toLocaleString() }) => {
+  const appendToHistory = ({
+    data,
+    timestamp = new Date().toLocaleString()
+  }) => {
     const roleLabel = getRoleLabel(data.role);
     const formattedMessage = data.message.replace(/\n/g, "<br>");
 
@@ -204,7 +212,7 @@
         </div>
       </div>
       <p class="history-message">${formattedMessage}</p>
-      <time class="message-timestamp">${data.timestamp || timestamp}</time>
+      <time class="message-timestamp">${timestamp}</time>
     `;
 
     historyContainer.insertBefore(historyElement, historyContainer.firstChild);
@@ -217,7 +225,7 @@
     const message = messageInput.value.trim();
 
     if (message && socket) {
-      socket.emit("user", { data: message });
+      socket.emit("user", { data: message, role: currentRole });
       messageInput.value = "";
       updateCharCount();
       messageInput.style.height = 'auto';
@@ -231,21 +239,32 @@
     charCount.style.color = count > 400 ? 'var(--error-500)' : 'var(--text-muted)';
   };
 
+  const stopAudio = () => {
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  };
+
   // 오디오 재생
   const playAudio = (data) => {
-    if (!data.audio_base64) return;
+    const url = "data:audio/ogg;base64," + data.audio_base64;
 
-    const audio = new Audio("data:audio/ogg;base64," + data.audio_base64);
-    audio.play().catch(console.error);
-
-    audio.onended = function () {
-      appendToHistory({ data: data, timestamp: new Date().toLocaleString() });
+    audio = new Audio(url);
+    audio.onended = () => {
+      appendToHistory({
+        data: data,
+        timestamp: new Date(data.timestamp).toLocaleString()
+      });
 
       if (socket) {
         socket.emit("complete", { role: data.role, room: roomCode });
         console.log(`Complete: ${data.role}, room: ${roomCode}`);
       }
     };
+
+    if (isAudioPlaying()) stopAudio();
+    audio.play().catch(console.error);
   };
 
   // 이벤트 리스너들
@@ -319,6 +338,11 @@
         message: data.message,
         role: "user",
         is_typing: data.is_typing || false
+      });
+
+      appendToHistory({
+        data: data,
+        timestamp: new Date(data.timestamp).toLocaleString()
       });
     });
 

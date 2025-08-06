@@ -61,6 +61,7 @@ def on_user(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
+    current_role = data.get("role", "pros")
     data = content.MessageContent(
         name=name,
         role="user",
@@ -71,11 +72,10 @@ def on_user(data):
     if not (code and message_text) or code not in room_manager.list_rooms():
         return
 
+    print(current_role, message_text)
     room = room_manager.get_room(code)
-    room.append_message(data)
-
+    room.user_message(message_text)
     socketio.emit("message", data, room=code)
-    on_model(data, code)
 
     utils.log_event("Send", name, message_text)
 
@@ -95,33 +95,14 @@ def on_typing(data):
     if not code or code not in room_manager.list_rooms():
         return
 
-    # 실시간 타이핑 메시지 전송
-    socketio.emit("message", data, room=code)
-
     # 일정 길이 이상 메시지면 GPT 반응 확률적으로 호출
     if len(message_text) > 70 and random.randint(0, 1) == 1:
         on_model(data, code)
 
+    # 실시간 타이핑 메시지 전송
+    socketio.emit("message", data, room=code)
+
     utils.log_event("Keystroke", name, message_text)
-
-
-@socketio.on("live")
-def on_live(data):
-    code = flask.session.get("room")
-    name = flask.session.get("name", "user")
-    status = data.get("status", "offline")
-    data = content.MessageContent(
-        name=name,
-        role="system",
-        message=f"{name} is now {status}"
-    ).to_dict()
-
-    if not code or code not in room_manager.list_rooms():
-        return
-
-    socketio.emit("notification", data, room=code)
-
-    utils.log_event("Toggle", name, status)
 
 
 @socketio.on("start")
@@ -139,8 +120,8 @@ def on_start(data):
     if not (code and topic) or code not in room_manager.list_rooms():
         return
 
-    room = room_manager.get_room(code)
-    room.append_message(data)
+    # room = room_manager.get_room(code)
+    # room.append_message(data)
 
     on_model(data, code)
 
@@ -185,17 +166,18 @@ def on_disconnect():
     if not code:
         return
 
+    if code in room_manager.list_rooms():
+        room = room_manager.get_room(code)
+        condition = room.remove_member()
+        if not condition:
+            room_manager.remove_room(code)
+
     flask_socketio.leave_room(code)
     # 퇴장 메시지 전송
     flask_socketio.send(
         data,
         to=code
     )
-    if code in room_manager.list_rooms():
-        room = room_manager.get_room(code)
-        condition = room.remove_member()
-        if not condition:
-            room_manager.remove_room(code)
 
     utils.log_event("Disconnect", name, data.get("message"))
 

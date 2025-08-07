@@ -29,18 +29,23 @@ def get_judge_prompt(df, topic="NFT는 예술의 미래인가?"):
         script_lines.append(
             f'GPT: “{side1["message"]}”. GEMINI: “{side2["message"]}”'
         )
+    print(script_lines)
     debate_script = " ".join(script_lines)
 
     return f"""We had a debate and the topic was “{topic}”. The two sides in the debate each provided arguments
-        " + \
-        "to prove their side and refute the points raised by the opponent. You are a judge for this debate.\n" + \
-        "You should be impartial and as objective as possible. The debate script will be given. You should\n" + \
-        "give a score from 1 to 10 to each side of the debate. In your judgement, you should take into\n" + \
-        "account of the following criteria: clarity of arguments, factuality and use of evidence, rebuttal and\n" + \
-        "counterarguments, logical consistency, persuasiveness and impact, conciseness, coherence. Also,\n" + \
-        "you should choose the side who you think is the overall winner. Your answer MUST follow the\n" + \
-        "following format: \"GPT: [[score of GPT]], GEMINI: [[score of GEMINI]], winner: [[name of winner]]\"\n\n" + \
-        f"The script of the debate is as follows: {debate_script}" + """
+    to prove their side and refute the points raised by the opponent. You are a judge for this debate.
+    You should be impartial and as objective as possible. The debate script will be given. You should
+    give a score from 1 to 10 to each side of the debate. In your judgement, you should take into
+    account the following criteria: clarity of arguments, factuality and use of evidence, rebuttal and
+    counterarguments, logical consistency, persuasiveness and impact, conciseness, coherence. Also,
+    you should choose the side who you think is the overall winner. Your answer MUST follow the
+    following format: "GPT: [[score of GPT]], GEMINI: [[score of GEMINI]], winner: [[name of winner]] (at next line) [[description]]".
+
+    The script of the debate is as follows:
+    {debate_script}
+
+    평가는 **한국어**로 작성해주세요.
+    """
 
 # GPT-4o 평가 호출
 def gpt_judge(prompt):
@@ -96,6 +101,9 @@ def evaluate_from_messages(messages, topic="NFT는 예술의 미래인가?"):
     # Extract turns per side
     gpt_turns = usable_df[usable_df["role"] == "pros"]["message"].tolist()
     gemini_turns = usable_df[usable_df["role"] == "cons"]["message"].tolist()
+
+    print(gpt_turns)
+    print(gemini_turns)
 
     # Generate prompt and judge
     prompt = get_judge_prompt(usable_df, topic)

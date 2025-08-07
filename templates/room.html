@@ -302,6 +302,7 @@
       URL.revokeObjectURL(url);
     });
 
+    // 평과 결과 보기
     document.getElementById('stats-btn')?.addEventListener('click', async () => {
       const roomCode = document
         .getElementById("room-container")
@@ -311,6 +312,7 @@
         .getAttribute("data-topic");
 
       try {
+        alert("평가 진행 중입니다…");
         const response = await fetch("/evaluate", {
           method: "POST",
           credentials: "same-origin",      // send session cookie
@@ -326,8 +328,6 @@
         }
 
         // 200 → success JSON
-        // we don't actually need the body here,
-        // since we stored it to session and result.html will read it.
         window.location.href = "/result";
 
       } catch (err) {

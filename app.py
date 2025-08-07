@@ -5,8 +5,8 @@ import flask
 import flask_socketio
 import sys
 
-from source import config, manager, utils, content, evaluate
-
+from source import config, manager, utils, content
+from source.eval import evaluate_from_messages
 
 TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])
 
@@ -218,7 +218,7 @@ def room():
     )
 
 @app.route("/evaluate", methods=["POST"])
-def evaluate_endpoint():
+def evaluate():
     data  = flask.request.get_json(silent=True) or {}
     code  = data.get("room")
     topic = data.get("topic")
@@ -229,7 +229,7 @@ def evaluate_endpoint():
     try:
         room = room_manager.get_room(code)
         messages = room.messages
-        result = evaluate.evaluate_from_messages(messages, topic)
+        result = evaluate_from_messages(messages, topic)
         flask.session["evaluation_result"] = result
         return flask.jsonify(result), 200
 
@@ -238,7 +238,7 @@ def evaluate_endpoint():
         return flask.jsonify({"error": str(e)}), 500
 
 @app.route("/result")
-def result_page():
+def result():
     result = flask.session.get("evaluation_result")
     if not result:
         return flask.redirect(flask.url_for("home"))

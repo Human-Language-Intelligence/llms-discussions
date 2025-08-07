@@ -3,8 +3,9 @@ import json
 
 import flask
 import flask_socketio
+import sys
 
-from source import config, manager, utils, content
+from source import config, manager, utils, content, evaluate
 
 
 TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])
@@ -195,6 +196,34 @@ def room():
         topic=topic,
         messages=room.messages
     )
+
+@app.route("/evaluate", methods=["POST"])
+def evaluate_endpoint():
+    data  = flask.request.get_json(silent=True) or {}
+    code  = data.get("room")
+    topic = data.get("topic")
+
+    if not code or not topic or code not in room_manager.list_rooms():
+        return flask.jsonify({"error": "Invalid room or topic"}), 400
+
+    try:
+        room = room_manager.get_room(code)
+        messages = room.messages
+        result = evaluate.evaluate_from_messages(messages, topic)
+        flask.session["evaluation_result"] = result
+        return flask.jsonify(result), 200
+
+    except Exception as e:
+        print(f"[Evaluation Error] {e}", file=sys.stderr)
+        return flask.jsonify({"error": str(e)}), 500
+
+@app.route("/result")
+def result_page():
+    result = flask.session.get("evaluation_result")
+    if not result:
+        return flask.redirect(flask.url_for("home"))
+
+    return flask.render_template("result.html", result=result)
 
 
 @app.route("/", methods=["GET", "POST"])

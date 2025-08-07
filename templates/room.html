@@ -5,7 +5,7 @@
     <section class="debate-status">
       <div class="status-info">
         <h2>토론 주제: {{ topic }}</h2>
-        <div id="room-container" data-room="{{ code }}"></div>
+        <div id="room-container" data-room="{{ code }}" data-topic="{{ topic }}"></div>
       </div>
       <div class="debate-stats">
         <div class="stat-item">
@@ -300,6 +300,40 @@
       a.download = `debate-history-${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('stats-btn')?.addEventListener('click', async () => {
+      const roomCode = document
+        .getElementById("room-container")
+        .getAttribute("data-room");
+      const topic = document
+        .getElementById("room-container")
+        .getAttribute("data-topic");
+
+      try {
+        const response = await fetch("/evaluate", {
+          method: "POST",
+          credentials: "same-origin",      // send session cookie
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room: roomCode, topic })
+        });
+
+        // 400/500 → error JSON
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          alert("❌ 평가 실패: " + (err.error || response.status));
+          return;
+        }
+
+        // 200 → success JSON
+        // we don't actually need the body here,
+        // since we stored it to session and result.html will read it.
+        window.location.href = "/result";
+
+      } catch (err) {
+        console.error("Evaluation error:", err);
+        alert("❌ 통계 평가 중 오류 발생");
+      }
     });
 
     updateStats();

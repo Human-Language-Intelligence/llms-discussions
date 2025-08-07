@@ -35,7 +35,35 @@ class Gemini():
             self.append_history("user", text)
         response = self.client.models.generate_content(
             model=self.model_name,
-            contents=self.conversations
+            contents=self.conversations,
+            config=genai.types.GenerateContentConfig(
+                safety_settings=[
+                    genai.types.SafetySetting(
+                        category=genai.types.HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+                        threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                    genai.types.SafetySetting(
+                        category=genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                    genai.types.SafetySetting(
+                        category=genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                    genai.types.SafetySetting(
+                        category=genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                    genai.types.SafetySetting(
+                        category=genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                    genai.types.SafetySetting(
+                        category=genai.types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+                        threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                    ),
+                ]
+            )
         )
 
         return response.text

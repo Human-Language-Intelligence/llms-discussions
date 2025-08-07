@@ -1,66 +1,50 @@
 from google.oauth2 import service_account
-from google.cloud import aiplatform
-from vertexai import generative_models
+from google import genai
 
 from .config import CONFIG as _CONFIG
 
 
 class Gemini():
-    def __init__(self, system_prompt: str = None) -> None:
-        aiplatform.init(
-            project=_CONFIG["google"]["GCP.PROJECT_ID"],
-            location=_CONFIG["google"]["GCP.LOCATION"],
-            credentials=service_account.Credentials.from_service_account_file(
-                _CONFIG["google"]["CREDENTIALS"]
-            )
-        )
-
+    def __init__(self, system_prompt: str = "") -> None:
         self.model_name = _CONFIG["google"]["GEMINI.MODEL_NAME"]
         self.client = None
-        self.chat = None
         self.conversations = []
 
-        self.connect_session()
-
         if system_prompt:
-            # self.convert_history(history)
             self.append_history(
                 role="user",
                 text=system_prompt
             )
-        else:
-            self.connect_chat()
+        self.connect_session()
 
     def connect_session(self) -> None:
-        self.client = generative_models.GenerativeModel(
-            model_name=self.model_name,
-            safety_settings={
-                generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_NONE,
-                generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_NONE,
-                generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_NONE,
-                generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_NONE
-            }
+        self.client = genai.Client(
+            vertexai=True,
+            credentials=service_account.Credentials.from_service_account_file(
+                _CONFIG["google"]["CREDENTIALS"],
+                scopes=[
+                    "https://www.googleapis.com/auth/cloud-platform"
+                ]
+            ),
+            project=_CONFIG["google"]["GCP.PROJECT_ID"],
+            location=_CONFIG["google"]["GCP.LOCATION"]
         )
 
-    def connect_chat(self) -> None:
-        self.chat = self.client.start_chat(history=self.conversations)
-
     def get_response(self, text: str) -> str:
-        response = self.chat.send_message(text)
-        # probability = [_.avg_logprobs for _ in response.candidates]
-        # result = [
-        #     _.text for _ in response.candidates[
-        #         probability.index(max(probability))
-        #     ].content.parts if hasattr(_, "text")
-        # ]
+        if text:
+            self.append_history("user", text)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=self.conversations
+        )
 
         return response.text
 
-    def convert_content(self, content: dict) -> generative_models.Content:
-        content = generative_models.Content(
+    def convert_content(self, content: dict) -> genai.types.Content:
+        content = genai.types.Content(
             role=content.get("role"),
             parts=[
-                generative_models.Part.from_text(part.get("text")) for part in content.get("parts")
+                genai.types.Part.from_text(text=part.get("text")) for part in content.get("parts")
             ]
         )
         return content
@@ -80,7 +64,6 @@ class Gemini():
         history = self.convert_content(content)
 
         self.conversations.append(history)
-        self.chat = self.client.start_chat(history=self.conversations)
 
 
 if __name__ == "__main__":

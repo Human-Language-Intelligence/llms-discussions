@@ -4,7 +4,7 @@ from .config import CONFIG as _CONFIG
 
 
 class ChatGPT():
-    def __init__(self, system_prompt: str = None) -> None:
+    def __init__(self, system_prompt: str = "") -> None:
         self.model_name = _CONFIG["openai"]["GPT.MODEL_NAME"]
         self.client = None
         self.conversations = []
@@ -21,7 +21,7 @@ class ChatGPT():
             api_key=_CONFIG["openai"]["GPT.API_KEY"]
         )
 
-    def get_response(self, text: str = None) -> str:
+    def get_response(self, text: str = "") -> str:
         completion = self.client.chat.completions
         if text:
             self.append_history(role="user", text=text)

@@ -312,7 +312,7 @@
         .getAttribute("data-topic");
 
       try {
-        alert("평가 진행 중입니다…");
+        alert("토론 내용에 대한 평가를 진행 중입니다…");
         const response = await fetch("/evaluate", {
           method: "POST",
           credentials: "same-origin",      // send session cookie

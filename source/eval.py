@@ -39,7 +39,7 @@ def get_judge_prompt(df, topic="NFT는 예술의 미래인가?"):
     account the following criteria: clarity of arguments, factuality and use of evidence, rebuttal and
     counterarguments, logical consistency, persuasiveness and impact, conciseness, coherence. Also,
     you should choose the side who you think is the overall winner. Your answer MUST follow the
-    following format: "GPT: [[score of GPT]], GEMINI: [[score of GEMINI]], winner: [[name of winner]] (at next line) [[description]]".
+    following format: "GPT: [[score of GPT]], GEMINI: [[score of GEMINI]], winner: [[name of winner]].\t".
 
     The script of the debate is as follows:
     {debate_script}

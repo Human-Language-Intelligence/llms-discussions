@@ -4,12 +4,12 @@
   <h2>📊 토론 평가 결과</h2>
 
   <section class="score-block">
-    <h3>🧑‍⚖️ GPT Judge 평가</h3>
+    <h3>🧑‍⚖️ LLM Judge 평가 (설득력)</h3>
     <p>{{ result.judge_result }}</p>
   </section>
 
   <section class="score-block">
-    <h3>🧠 Coherence Flow Score</h3>
+    <h3>🧠 Coherence Flow Score (일관성)</h3>
     <ul>
       <li>GPT: {{ result.coherence.gpt }}</li>
       <li>GEMINI: {{ result.coherence.gemini }}</li>
@@ -17,7 +17,7 @@
   </section>
 
   <section class="score-block">
-    <h3>🧾 Argument Diversity Index</h3>
+    <h3>🧾 Argument Diversity Index (다양성)</h3>
     <ul>
       <li>GPT: {{ result.diversity.gpt }}</li>
       <li>GEMINI: {{ result.diversity.gemini }}</li>

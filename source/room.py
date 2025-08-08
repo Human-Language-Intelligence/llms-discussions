@@ -53,6 +53,10 @@ class Room:
         if len(self.messages) > 100:
             self.messages.pop(0)
 
+    def user_message(self, message):
+        for thread in self.threads.values():
+            thread.model.append_history("user", message)
+
     def get_message(self):
         for i, msg in enumerate(self.messages):
             if not msg.get("is_playing"):

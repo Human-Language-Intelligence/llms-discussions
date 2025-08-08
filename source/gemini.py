@@ -27,7 +27,10 @@ class Gemini():
                 ]
             ),
             project=_CONFIG["google"]["GCP.PROJECT_ID"],
-            location=_CONFIG["google"]["GCP.LOCATION"]
+            location=_CONFIG["google"]["GCP.LOCATION"],
+            http_options=genai.types.HttpOptions(
+                api_version="v1"
+            )
         )
 
     def get_response(self, text: str) -> str:

@@ -82,6 +82,20 @@
       </a>
     </div>
   </aside>
+
+  <!-- 로딩 오버레이 -->
+  <div id="eval-overlay" class="eval-overlay hidden" aria-live="polite" aria-busy="true">
+    <div class="eval-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="eval-text">
+        <strong>평가를 진행 중입니다…</strong>
+        <span>LLM Judge · Coherence · Diversity 계산 중</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 </main>
 
 <script type="module">
@@ -274,6 +288,19 @@
     audio.play().catch(console.error);
   };
 
+  // overlay & toast 유틸
+  const overlayEl = document.getElementById("eval-overlay");
+  const toastEl = document.getElementById("toast");
+  function showOverlay() { overlayEl?.classList.remove("hidden"); }
+  function hideOverlay() { overlayEl?.classList.add("hidden"); }
+  function showToast(msg, type="info", timeout=3000) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.remove("hidden", "error");
+    if (type === "error") toastEl.classList.add("error");
+    setTimeout(() => toastEl.classList.add("hidden"), timeout);
+  }
+
   // 이벤트 리스너들
   document.addEventListener("DOMContentLoaded", () => {
     // 메시지 입력 이벤트
@@ -332,36 +359,40 @@
     });
 
     // 평과 결과 보기
-    document.getElementById('stats-btn')?.addEventListener('click', async () => {
-      const roomCode = document
-        .getElementById("room-container")
-        .getAttribute("data-room");
-      const topic = document
-        .getElementById("room-container")
-        .getAttribute("data-topic");
+    document.getElementById('stats-btn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const roomCode = document.getElementById("room-container").getAttribute("data-room");
+      const topic = document.getElementById("room-container").getAttribute("data-topic");
+
+      // 버튼 중복 클릭 방지 + 오버레이 표시
+      btn.disabled = true;
+      btn.classList.add('loading'); // 필요하면 CSS에서 스타일링
+      btn.textContent = "⏳ 평가 중…";
+      showOverlay();
 
       try {
-        alert("토론 내용에 대한 평가를 진행 중입니다…");
         const response = await fetch("/evaluate", {
           method: "POST",
-          credentials: "same-origin",      // send session cookie
+          credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ room: roomCode, topic })
         });
 
-        // 400/500 → error JSON
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
-          alert("❌ 평가 실패: " + (err.error || response.status));
-          return;
+          throw new Error(err.error || `HTTP ${response.status}`);
         }
 
-        // 200 → success JSON
+        // 성공 → 결과 페이지로 이동
         window.location.href = "/result";
 
       } catch (err) {
         console.error("Evaluation error:", err);
-        alert("❌ 통계 평가 중 오류 발생");
+        showToast("❌ 통계 평가 중 오류 발생: " + err.message, "error");
+        hideOverlay();
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.textContent = "📊 결과 보기";
       }
     });
 

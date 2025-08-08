@@ -46,7 +46,9 @@
           <span class="label">GPT</span>
           <span class="value">{{ "%.4f"|format(result.coherence.gpt) }}</span>
         </div>
-        <div class="meter"><div class="meter-fill" style="width: {{ coh_gpt }}%;"></div></div>
+        <div class="meter">
+          <div class="meter-fill" style="width: {{ coh_gpt }}%;"></div>
+        </div>
       </div>
 
       <div class="kpi" id="coh-gem">
@@ -54,7 +56,9 @@
           <span class="label">GEMINI</span>
           <span class="value">{{ "%.4f"|format(result.coherence.gemini) }}</span>
         </div>
-        <div class="meter"><div class="meter-fill alt" style="width: {{ coh_gem }}%;"></div></div>
+        <div class="meter">
+          <div class="meter-fill alt" style="width: {{ coh_gem }}%;"></div>
+        </div>
       </div>
     </section>
 
@@ -69,7 +73,9 @@
           <span class="label">GPT</span>
           <span class="value">{{ "%.4f"|format(result.diversity.gpt) }}</span>
         </div>
-        <div class="meter"><div class="meter-fill" style="width: {{ div_gpt }}%;"></div></div>
+        <div class="meter">
+          <div class="meter-fill" style="width: {{ div_gpt }}%;"></div>
+        </div>
       </div>
 
       <div class="kpi" id="div-gem">
@@ -77,7 +83,9 @@
           <span class="label">GEMINI</span>
           <span class="value">{{ "%.4f"|format(result.diversity.gemini) }}</span>
         </div>
-        <div class="meter"><div class="meter-fill alt" style="width: {{ div_gem }}%;"></div></div>
+        <div class="meter">
+          <div class="meter-fill alt" style="width: {{ div_gem }}%;"></div>
+        </div>
       </div>
     </section>
   </div>
@@ -88,47 +96,47 @@
 </main>
 
 <script>
-(function () {
-  // 원본 judge 문자열
-  const rawEl = document.getElementById('judge-raw');
-  const raw = rawEl?.textContent?.trim() || '';
+  (function () {
+    // 원본 judge 문자열
+    const rawEl = document.getElementById('judge-raw');
+    const raw = rawEl?.textContent?.trim() || '';
 
-  // 타깃 엘리먼트
-  const gptEl = document.getElementById('judge-gpt');
-  const gemEl = document.getElementById('judge-gemini');
-  const winEl = document.getElementById('judge-winner');
-  const descEl = document.getElementById('judge-desc');
-  const badge  = document.getElementById('winner-badge');
+    // 타깃 엘리먼트
+    const gptEl = document.getElementById('judge-gpt');
+    const gemEl = document.getElementById('judge-gemini');
+    const winEl = document.getElementById('judge-winner');
+    const descEl = document.getElementById('judge-desc');
+    const badge = document.getElementById('winner-badge');
 
-  // 1) 점수/우승자 파싱 (여러 포맷 허용)
-  const headerRe = /GPT\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*GEMINI\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*winner\s*:\s*\[\[?([\w가-힣]+)\]?\]/i;
-  const m = raw.match(headerRe);
+    // 1) 점수/우승자 파싱 (여러 포맷 허용)
+    const headerRe = /GPT\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*GEMINI\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*winner\s*:\s*\[\[?([\w가-힣]+)\]?\]/i;
+    const m = raw.match(headerRe);
 
-  if (m) {
-    const gpt = m[1], gem = m[2], winner = (m[3] || '').toUpperCase();
-    if (gptEl) gptEl.textContent = gpt;
-    if (gemEl) gemEl.textContent = gem;
-    if (winEl) winEl.textContent = winner;
+    if (m) {
+      const gpt = m[1], gem = m[2], winner = (m[3] || '').toUpperCase();
+      if (gptEl) gptEl.textContent = gpt;
+      if (gemEl) gemEl.textContent = gem;
+      if (winEl) winEl.textContent = winner;
 
-    // 2) 설명 부분 추출 (헤더 제거 후 남는 텍스트)
-    let desc = raw.slice(m.index + m[0].length).trim();
-    // 선행 구두점/불필요 문자 제거
-    desc = desc.replace(/^[\s:.,\-–—]+/, '');
-    if (!desc) desc = raw;  // 안전장치
-    if (descEl) descEl.textContent = desc;
+      // 2) 설명 부분 추출 (헤더 제거 후 남는 텍스트)
+      let desc = raw.slice(m.index + m[0].length).trim();
+      // 선행 구두점/불필요 문자 제거
+      desc = desc.replace(/^[\s:.,\-–—]+/, '');
+      if (!desc) desc = raw;  // 안전장치
+      if (descEl) descEl.textContent = desc;
 
-    // 3) Winner 배지/하이라이트
-    if (badge && winner) {
-      badge.querySelector('strong').textContent = winner;
-      badge.classList.remove('hidden');
-      const winnerId = (winner === 'GPT') ? '#coh-gpt, #div-gpt' : '#coh-gem, #div-gem';
-      document.querySelectorAll(winnerId).forEach(el => el.classList.add('winner'));
+      // 3) Winner 배지/하이라이트
+      if (badge && winner) {
+        badge.querySelector('strong').textContent = winner;
+        badge.classList.remove('hidden');
+        const winnerId = (winner === 'GPT') ? '#coh-gpt, #div-gpt' : '#coh-gem, #div-gem';
+        document.querySelectorAll(winnerId).forEach(el => el.classList.add('winner'));
+      }
+    } else {
+      // 파싱 실패 시: 원본을 설명에 그대로 노출
+      if (descEl) descEl.textContent = raw;
     }
-  } else {
-    // 파싱 실패 시: 원본을 설명에 그대로 노출
-    if (descEl) descEl.textContent = raw;
-  }
-})();
+  })();
 </script>
 
 {% endblock %}

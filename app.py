@@ -197,10 +197,11 @@ def room():
         messages=room.messages
     )
 
+
 @app.route("/evaluate", methods=["POST"])
 def evaluate():
-    data  = flask.request.get_json(silent=True) or {}
-    code  = data.get("room")
+    data = flask.request.get_json(silent=True) or {}
+    code = data.get("room")
     topic = data.get("topic")
 
     if not code or not topic or code not in room_manager.list_rooms():
@@ -216,6 +217,7 @@ def evaluate():
     except Exception as e:
         print(f"[Evaluation Error] {e}", file=sys.stderr)
         return flask.jsonify({"error": str(e)}), 500
+
 
 @app.route("/result")
 def result():

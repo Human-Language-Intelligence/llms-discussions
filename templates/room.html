@@ -293,7 +293,7 @@
   const toastEl = document.getElementById("toast");
   function showOverlay() { overlayEl?.classList.remove("hidden"); }
   function hideOverlay() { overlayEl?.classList.add("hidden"); }
-  function showToast(msg, type="info", timeout=3000) {
+  function showToast(msg, type = "info", timeout = 3000) {
     if (!toastEl) return;
     toastEl.textContent = msg;
     toastEl.classList.remove("hidden", "error");

@@ -267,7 +267,7 @@ body {
 .section-label {
   font-size: var(--text-lg);
   font-weight: 600;
-  margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-md);
   display: block;
   text-align: center;
 }
@@ -280,7 +280,7 @@ body {
 }
 
 .model-group {
-  text-align: center;
+  text-align: left;
 }
 
 .model-label {
@@ -382,6 +382,10 @@ body {
 }
 
 /* 제안 주제 */
+.suggestions-section {
+  padding: var(--space-lg);
+}
+
 .suggestions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -398,8 +402,14 @@ body {
   border-radius: var(--radius);
   cursor: pointer;
   transition: all var(--duration) var(--ease);
-  text-align: center;
   font-weight: 500;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.suggestion-text {
+  text-align: center;
 }
 
 .suggestion-item:hover {

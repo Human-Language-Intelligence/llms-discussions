@@ -117,7 +117,9 @@
           <ul class="suggestions-grid" role="list">
             {% for topic in random_topics %}
             <li class="suggestion-item" role="listitem" onclick="fillInput('{{ topic }}')">
-              {{ topic }}
+              <div class="suggestion-text">
+                {{ topic }}
+              </div>
             </li>
             {% endfor %}
           </ul>

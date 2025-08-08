@@ -1,29 +1,134 @@
 {% extends 'base.html' %}
 {% block content %}
 <main class="result-section">
-  <h2>📊 토론 평가 결과</h2>
+  <header class="page-header">
+    <h1>📊 토론 평가 결과</h1>
+    <span id="winner-badge" class="winner-badge hidden">우승: <strong></strong></span>
+  </header>
 
-  <section class="score-block">
-    <h3>🧑‍⚖️ LLM Judge 평가 (설득력)</h3>
-    <p>{{ result.judge_result }}</p>
+  <section class="score-card">
+    <h2>🧑‍⚖️ LLM Judge 평가 (설득력)</h2>
+    <div class="judge-structured">
+      <div class="judge-kpis">
+        <div class="kv">
+          <span class="k-label">GPT</span>
+          <strong id="judge-gpt" class="k-value">--</strong>
+        </div>
+        <div class="kv">
+          <span class="k-label">GEMINI</span>
+          <strong id="judge-gemini" class="k-value">--</strong>
+        </div>
+        <div class="kv winner">
+          <span class="k-label">Winner</span>
+          <strong id="judge-winner" class="k-value">--</strong>
+        </div>
+      </div>
+
+      <div class="judge-desc">
+        <div class="desc-title">설명</div>
+        <p id="judge-desc" class="judge-raw"></p>
+      </div>
+
+      <!-- 숨김: 원본 문자열(파싱 실패 시 fallback 용) -->
+      <pre id="judge-raw" class="hidden">{{ result.judge_result }}</pre>
+    </div>
   </section>
 
-  <section class="score-block">
-    <h3>🧠 Coherence Flow Score (일관성)</h3>
-    <ul>
-      <li>GPT: {{ result.coherence.gpt }}</li>
-      <li>GEMINI: {{ result.coherence.gemini }}</li>
-    </ul>
-  </section>
+  <div class="grid">
+    <section class="score-card">
+      <h3>🧠 Coherence Flow Score (일관성)</h3>
 
-  <section class="score-block">
-    <h3>🧾 Argument Diversity Index (다양성)</h3>
-    <ul>
-      <li>GPT: {{ result.diversity.gpt }}</li>
-      <li>GEMINI: {{ result.diversity.gemini }}</li>
-    </ul>
-  </section>
+      {% set coh_gpt = (result.coherence.gpt * 100) | round(1) %}
+      {% set coh_gem = (result.coherence.gemini * 100) | round(1) %}
 
-  <a href="{{ url_for('room') }}" class="btn btn-secondary">🔙 돌아가기</a>
+      <div class="kpi" id="coh-gpt">
+        <div class="kpi-row">
+          <span class="label">GPT</span>
+          <span class="value">{{ "%.4f"|format(result.coherence.gpt) }}</span>
+        </div>
+        <div class="meter"><div class="meter-fill" style="width: {{ coh_gpt }}%;"></div></div>
+      </div>
+
+      <div class="kpi" id="coh-gem">
+        <div class="kpi-row">
+          <span class="label">GEMINI</span>
+          <span class="value">{{ "%.4f"|format(result.coherence.gemini) }}</span>
+        </div>
+        <div class="meter"><div class="meter-fill alt" style="width: {{ coh_gem }}%;"></div></div>
+      </div>
+    </section>
+
+    <section class="score-card">
+      <h3>🧾 Argument Diversity Index (다양성)</h3>
+
+      {% set div_gpt = (result.diversity.gpt * 100) | round(1) %}
+      {% set div_gem = (result.diversity.gemini * 100) | round(1) %}
+
+      <div class="kpi" id="div-gpt">
+        <div class="kpi-row">
+          <span class="label">GPT</span>
+          <span class="value">{{ "%.4f"|format(result.diversity.gpt) }}</span>
+        </div>
+        <div class="meter"><div class="meter-fill" style="width: {{ div_gpt }}%;"></div></div>
+      </div>
+
+      <div class="kpi" id="div-gem">
+        <div class="kpi-row">
+          <span class="label">GEMINI</span>
+          <span class="value">{{ "%.4f"|format(result.diversity.gemini) }}</span>
+        </div>
+        <div class="meter"><div class="meter-fill alt" style="width: {{ div_gem }}%;"></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="actions">
+    <a href="{{ url_for('room') }}" class="btn">← 돌아가기</a>
+  </div>
 </main>
+
+<script>
+(function () {
+  // 원본 judge 문자열
+  const rawEl = document.getElementById('judge-raw');
+  const raw = rawEl?.textContent?.trim() || '';
+
+  // 타깃 엘리먼트
+  const gptEl = document.getElementById('judge-gpt');
+  const gemEl = document.getElementById('judge-gemini');
+  const winEl = document.getElementById('judge-winner');
+  const descEl = document.getElementById('judge-desc');
+  const badge  = document.getElementById('winner-badge');
+
+  // 1) 점수/우승자 파싱 (여러 포맷 허용)
+  const headerRe = /GPT\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*GEMINI\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*winner\s*:\s*\[\[?([\w가-힣]+)\]?\]/i;
+  const m = raw.match(headerRe);
+
+  if (m) {
+    const gpt = m[1], gem = m[2], winner = (m[3] || '').toUpperCase();
+    if (gptEl) gptEl.textContent = gpt;
+    if (gemEl) gemEl.textContent = gem;
+    if (winEl) winEl.textContent = winner;
+
+    // 2) 설명 부분 추출 (헤더 제거 후 남는 텍스트)
+    let desc = raw.slice(m.index + m[0].length).trim();
+    // 선행 구두점/불필요 문자 제거
+    desc = desc.replace(/^[\s:.,\-–—]+/, '');
+    if (!desc) desc = raw;  // 안전장치
+    if (descEl) descEl.textContent = desc;
+
+    // 3) Winner 배지/하이라이트
+    if (badge && winner) {
+      badge.querySelector('strong').textContent = winner;
+      badge.classList.remove('hidden');
+      const winnerId = (winner === 'GPT') ? '#coh-gpt, #div-gpt' : '#coh-gem, #div-gem';
+      document.querySelectorAll(winnerId).forEach(el => el.classList.add('winner'));
+    }
+  } else {
+    // 파싱 실패 시: 원본을 설명에 그대로 노출
+    if (descEl) descEl.textContent = raw;
+  }
+})();
+</script>
+
 {% endblock %}

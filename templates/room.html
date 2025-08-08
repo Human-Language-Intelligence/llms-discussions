@@ -28,7 +28,7 @@
         <h2 class="chat-title">💬 실시간 토론</h2>
         <div class="debate-controls">
           <button class="control-btn active" id="audio-btn">🔴 음성</button>
-          <button class="control-btn secondary" id="pause-btn">⏸️ 일시정지</button>
+          <!-- <button class="control-btn secondary" id="pause-btn">⏸️ 일시정지</button> -->
           <button class="control-btn secondary" id="stats-btn">📊 결과 보기</button>
         </div>
       </div>
@@ -328,10 +328,10 @@
       if (!audioOn) complete(currentData);
     });
 
-    document.getElementById('pause-btn')?.addEventListener('click', (e) => {
-      e.target.classList.toggle('active');
-      // 일시정지 로직
-    });
+    // document.getElementById('pause-btn')?.addEventListener('click', (e) => {
+    //   e.target.classList.toggle('active');
+    //   // 일시정지 로직
+    // });
 
     document.getElementById('clear-history-btn')?.addEventListener('click', () => {
       if (confirm('히스토리를 모두 삭제하시겠습니까?')) {

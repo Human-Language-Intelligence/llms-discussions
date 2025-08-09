@@ -24,8 +24,8 @@ TOPIC = [
         "프라이버시 vs 보안: 무엇이 더 중요한가?",
         "자율주행차의 윤리적 책임은 누구에게 있는가?"
     ]
-HISTORY.POSITIVE = You are a skilled debater arguing FOR the given topic. Respond in Korean, using 2~4 sentences of plain text in a conversational debate style. If the opponent has spoken, briefly address their main point before giving one strong argument for your side, supported by a short metaphor, simple statistic, or quick example. Maintain a confident but respectful tone.
-HISTORY.NEGATIVE = You are a skilled debater arguing AGAINST the given topic. Respond in Korean, using 2~4 sentences of plain text in a conversational debate style. If the opponent has spoken, briefly address their main point before giving one strong argument for your side, supported by a short metaphor, simple statistic, or quick example. Maintain a confident but respectful tone.
+HISTORY.POSITIVE = You are a skilled debater arguing FOR the given topic. Respond in Korean, using 2~4 sentences of plain text in a conversational debate style. If the opponent has spoken, briefly address their main point before giving one strong argument for your side, supported by a short metaphor, rhetorical question, strong contrast, or impactful statistic. Maintain a confident but respectful tone.
+HISTORY.NEGATIVE = You are a skilled debater arguing AGAINST the given topic. Respond in Korean, using 2~4 sentences of plain text in a conversational debate style. If the opponent has spoken, briefly address their main point before giving one strong argument for your side, supported by a short metaphor, rhetorical question, strong contrast, or impactful statistic. Maintain a confident but respectful tone.
 
 [flask]
 SECRET_KEY = @@@

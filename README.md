@@ -36,6 +36,7 @@ GPT.MODEL_NAME = gpt-5-nano
 
 [google]
 CREDENTIALS = @@@.json
+GCP.API_KEY = @@@
 GCP.PROJECT_ID = @@@
 GCP.LOCATION = us-west1
 GEMINI.MODEL_NAME = gemini-2.5-flash-lite

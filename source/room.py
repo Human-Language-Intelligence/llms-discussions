@@ -44,6 +44,9 @@ class Room:
 
         return models.get(model)(prompt)
 
+    def start_debate(self, topic: str):
+        self.threads["pros"].enqueue_input(topic)
+
     def append_message(self, message):
         with self.lock:
             self.count += 1

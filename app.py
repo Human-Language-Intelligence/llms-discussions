@@ -51,10 +51,10 @@ def on_model(data, code):
     if not data:
         return
 
+    topic = data.get("message", "").strip()
     room = room_manager.get_room(code)
-    room.threads["pros"].enqueue_input(
-        data.get("message", "").strip()
-    )
+
+    room.start_debate(topic)
 
 
 @socketio.on("user")

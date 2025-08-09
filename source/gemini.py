@@ -9,12 +9,8 @@ class Gemini():
         self.model_name = _CONFIG["google"]["GEMINI.MODEL_NAME"]
         self.client = None
         self.conversations = []
+        self.system_prompt = system_prompt
 
-        if system_prompt:
-            self.append_history(
-                role="user",
-                text=system_prompt
-            )
         self.connect_session()
 
     def connect_session(self) -> None:
@@ -40,6 +36,7 @@ class Gemini():
             model=self.model_name,
             contents=self.conversations,
             config=genai.types.GenerateContentConfig(
+                system_instruction=self.system_prompt,
                 safety_settings=[
                     genai.types.SafetySetting(
                         category=genai.types.HarmCategory.HARM_CATEGORY_UNSPECIFIED,
@@ -95,13 +92,3 @@ class Gemini():
         history = self.convert_content(content)
 
         self.conversations.append(history)
-
-
-if __name__ == "__main__":
-    history = "System prompt: You will take a position against the given topic. Counter the opposing viewpoint and assert your own opinion in Korean. Your response should not exceed 3 lines."
-
-    gemini = Gemini(history)
-    gemini.append_history("assistant", "학교는 연구를 위한 곳입니다.")
-    response = gemini.get_response("위 내용에 대해서 답변해줘.")
-
-    print(response)

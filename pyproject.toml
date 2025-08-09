@@ -7,10 +7,9 @@ dependencies = [
     "flask>=3.1.1",
     "flask-socketio>=5.5.1",
     "google-api-python-client>=2.177.0",
-    "google-cloud-aiplatform>=1.106.0",
     "google-cloud-texttospeech>=2.27.0",
+    "google-genai>=1.29.0",
     "openai>=1.98.0",
     "pandas>=2.3.1",
     "scikit-learn>=1.7.1",
-    "thefuzz>=0.22.1",
 ]

@@ -22,8 +22,10 @@ class ChatGPT():
         )
 
     def get_response(self, text: str = "") -> str:
-        if text:
-            self.append_history(role="user", text=text)
+        if not text:
+            return ""
+
+        self.append_history(role="user", text=text)
         response = self.client.responses.create(
             model=self.model_name,
             reasoning={
@@ -31,8 +33,10 @@ class ChatGPT():
             },
             input=self.conversations
         )
+        output = response.output_text
+        self.append_history("assistant", output)
 
-        return response.output_text
+        return output
 
     def append_history(self, role: str, text: str) -> None:
         history = {

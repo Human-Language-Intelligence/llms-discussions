@@ -28,13 +28,11 @@ class Gemini():
                 api_version="v1"
             )
         )
+        self.create_chat()
 
-    def get_response(self, text: str) -> str:
-        if text:
-            self.append_history("user", text)
-        response = self.client.models.generate_content(
+    def create_chat(self):
+        self.chat = self.client.chats.create(
             model=self.model_name,
-            contents=self.conversations,
             config=genai.types.GenerateContentConfig(
                 system_instruction=self.system_prompt,
                 safety_settings=[
@@ -63,19 +61,28 @@ class Gemini():
                         threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
                     ),
                 ]
-            )
+            ),
+            history=self.conversations
         )
 
-        return response.text
+    def get_response(self, text: str) -> str:
+        if not text:
+            return ""
+
+        self.append_history("user", text)
+        response = self.chat.send_message(text)
+        output = response.text
+
+        return output
 
     def convert_content(self, content: dict) -> genai.types.Content:
-        content = genai.types.Content(
+        chat = genai.types.Content(
             role=content.get("role"),
             parts=[
                 genai.types.Part.from_text(text=part.get("text")) for part in content.get("parts")
             ]
         )
-        return content
+        return chat
 
     def convert_history(self, contents: list) -> None:
         self.conversations = [
@@ -89,6 +96,7 @@ class Gemini():
                 {"text": text}
             ],
         }
-        history = self.convert_content(content)
+        content = self.convert_content(content)
 
-        self.conversations.append(history)
+        self.conversations.append(content)
+        self.create_chat()

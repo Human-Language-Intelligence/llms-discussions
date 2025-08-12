@@ -116,7 +116,7 @@
           </legend>
           <ul class="suggestions-grid" role="list">
             {% for topic in random_topics %}
-            <li class="suggestion-item" role="listitem" onclick="fillInput('{{ topic }}')">
+            <li class="suggestion-item" role="listitem" data-topic='{{ topic }}'>
               <div class="suggestion-text">
                 {{ topic }}
               </div>
@@ -136,6 +136,17 @@
       input.value = topic;
       input.focus();
     }
+  }
+
+  // 에러 토스트 표시 함수
+  function showErrorToast(message) {
+    const toast = document.getElementById("error-toast");
+    toast.textContent = message;
+    toast.style.display = "block";
+
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, 4000);
   }
 
   // 폼 유효성 검사 개선
@@ -230,27 +241,17 @@
         submitBtn.classList.add('btn-secondary');
       }
     });
-  });
 
-  // 에러 토스트 표시 함수
-  function showErrorToast(message) {
-    const toast = document.getElementById("error-toast");
-    toast.textContent = message;
-    toast.style.display = "block";
-
-    setTimeout(() => {
-      toast.style.display = "none";
-    }, 4000);
-  }
-
-  // 추천 주제 클릭 애니메이션
-  document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('suggestion-item')) {
-      e.target.style.transform = 'scale(0.95)';
-      setTimeout(() => {
-        e.target.style.transform = '';
-      }, 150);
-    }
+    document.querySelector('.suggestions-grid').addEventListener('click', (e) => {
+      const suggestionItem = e.target.closest('.suggestion-item');
+      if (suggestionItem) {
+        fillInput(suggestionItem.dataset.topic);
+        suggestionItem.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          suggestionItem.style.transform = '';
+        }, 150);
+      }
+    });
   });
 </script>
 {% endblock %}

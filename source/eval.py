@@ -5,6 +5,7 @@ from bert_score import score as bert_score
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
 from datetime import datetime
+from googleapiclient import discovery
 from .config import CONFIG as _CONFIG
 
 # OpenAI API Key 설정
@@ -121,9 +122,27 @@ def evaluate_from_messages(messages, topic="NFT는 예술의 미래인가?"):
         "diversity": {"gpt": round(diversity_gpt, 4), "gemini": round(diversity_gemini, 4)}
     }
 
+def get_perspective(text):
+    client = discovery.build(
+        "commentanalyzer",
+        "v1alpha1",
+        discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
+        static_discovery=False,
+        developerKey=_CONFIG["google"]["GCP.API_KEY"]
+    )
+    analyze_request = {
+        'comment': {'text': text},
+        'requestedAttributes': {'TOXICITY': {}}
+    }
+    response = client.comments().analyze(body=analyze_request).execute()
+
+    return response
+
 if __name__ == "__main__":
     file_path = "./debate-history-1754391739291.json"
+
     with open(file_path, "r", encoding="utf-8") as f:
         debate_data = json.load(f)
+
     result = evaluate_from_messages(debate_data)
     print(json.dumps(result, ensure_ascii=False, indent=2))

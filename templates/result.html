@@ -108,33 +108,98 @@
     const descEl = document.getElementById('judge-desc');
     const badge = document.getElementById('winner-badge');
 
-    // 1) 점수/우승자 파싱 (여러 포맷 허용)
+    // 1) 점수/우승자 파싱
     const headerRe = /GPT\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*GEMINI\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*winner\s*:\s*\[\[?([\w가-힣]+)\]?\]/i;
     const m = raw.match(headerRe);
 
+    let judgeGPT = 0, judgeGem = 0, winner = '';
+
     if (m) {
-      const gpt = m[1], gem = m[2], winner = (m[3] || '').toUpperCase();
-      if (gptEl) gptEl.textContent = gpt;
-      if (gemEl) gemEl.textContent = gem;
+      judgeGPT = parseFloat(m[1]);
+      judgeGem = parseFloat(m[2]);
+      winner = (m[3] || '').toUpperCase();
+
+      if (gptEl) gptEl.textContent = judgeGPT.toFixed(2);
+      if (gemEl) gemEl.textContent = judgeGem.toFixed(2);
       if (winEl) winEl.textContent = winner;
 
-      // 2) 설명 부분 추출 (헤더 제거 후 남는 텍스트)
+      // 설명 추출
       let desc = raw.slice(m.index + m[0].length).trim();
-      // 선행 구두점/불필요 문자 제거
       desc = desc.replace(/^[\s:.,\-–—]+/, '');
-      if (!desc) desc = raw;  // 안전장치
+      if (!desc) desc = raw;
       if (descEl) descEl.textContent = desc;
+    } else {
+      if (descEl) descEl.textContent = raw;
+    }
 
-      // 3) Winner 배지/하이라이트
-      if (badge && winner) {
-        badge.querySelector('strong').textContent = winner;
-        badge.classList.remove('hidden');
-        const winnerId = (winner === 'GPT') ? '#coh-gpt, #div-gpt' : '#coh-gem, #div-gem';
+    // 2) coherence & diversity 스코어 가져오기
+    const cohGPT = parseFloat(document.querySelector("#coh-gpt .value")?.textContent || "0");
+    const cohGem = parseFloat(document.querySelector("#coh-gem .value")?.textContent || "0");
+    const divGPT = parseFloat(document.querySelector("#div-gpt .value")?.textContent || "0");
+    const divGem = parseFloat(document.querySelector("#div-gem .value")?.textContent || "0");
+
+    // 3) 최종 점수 계산 (2:1:1 비율 → 최대 22점 기준 환산)
+    const maxScore = 22.0;
+    const rawFinalGPT = (judgeGPT * 2) + cohGPT + divGPT;
+    const rawFinalGem = (judgeGem * 2) + cohGem + divGem;
+
+    const finalGPT = (rawFinalGPT / maxScore) * 100;
+    const finalGem = (rawFinalGem / maxScore) * 100;
+
+    // 결과를 출력
+    const finalScoreBox = document.createElement("section");
+    finalScoreBox.className = "score-card";
+    finalScoreBox.innerHTML = `
+      <h3>🏆 최종 환산 점수</h3>
+      <div class="kpi" id="final-gpt">
+        <div class="kpi-row">
+          <span class="label">GPT</span>
+          <span class="value" title="(${judgeGPT.toFixed(2)}×2 + ${cohGPT.toFixed(4)} + ${divGPT.toFixed(4)}) / 22 × 100">
+            ${finalGPT.toFixed(2)} / 100
+          </span>
+        </div>
+        <div class="meter">
+          <div class="meter-fill" style="width: ${finalGPT.toFixed(2)}%;"></div>
+        </div>
+      </div>
+      <div class="kpi" id="final-gemini">
+        <div class="kpi-row">
+          <span class="label">GEMINI</span>
+          <span class="value" title="(${judgeGem.toFixed(2)}×2 + ${cohGem.toFixed(4)} + ${divGem.toFixed(4)}) / 22 × 100">
+            ${finalGem.toFixed(2)} / 100
+          </span>
+        </div>
+        <div class="meter">
+          <div class="meter-fill alt" style="width: ${finalGem.toFixed(2)}%;"></div>
+        </div>
+      </div>
+    `;
+
+    // 화면에 추가
+    const grid = document.querySelector(".grid");
+    if (grid) {
+      grid.insertAdjacentElement("afterend", finalScoreBox);
+    }
+
+    // 4) 우승자 표시
+    let finalWinner = '';
+    if (finalGPT > finalGem) finalWinner = 'GPT';
+    else if (finalGem > finalGPT) finalWinner = 'GEMINI';
+    else finalWinner = '무승부';
+
+    if (badge && finalWinner) {
+      badge.querySelector('strong').textContent = finalWinner;
+      badge.classList.remove('hidden');
+
+      const winnerId = finalWinner === 'GPT'
+        ? '#coh-gpt, #div-gpt, #final-gpt'
+        : finalWinner === 'GEMINI'
+        ? '#coh-gem, #div-gem, #final-gemini'
+        : '';
+
+      if (winnerId) {
         document.querySelectorAll(winnerId).forEach(el => el.classList.add('winner'));
       }
-    } else {
-      // 파싱 실패 시: 원본을 설명에 그대로 노출
-      if (descEl) descEl.textContent = raw;
     }
   })();
 </script>

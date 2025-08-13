@@ -6,7 +6,7 @@ import flask_socketio
 import sys
 
 from source import config, manager, utils, content
-from source.eval import evaluate_from_messages
+from source.eval import DebateEvaluator
 
 TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])
 
@@ -14,6 +14,7 @@ app = flask.Flask(__name__)
 app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 room_manager = manager.RoomManager()
+evaluator = DebateEvaluator()
 
 room_manager.event_bus.subscribe(
     "pros-response",
@@ -62,15 +63,16 @@ def on_user(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     message_text = data.get("data", "").strip()
+
+    if not (code and message_text) or code not in room_manager.list_rooms():
+        return
+
     data = content.MessageContent(
         name=name,
         role="user",
         message=message_text,
         is_playing=True
     ).to_dict()
-
-    if not (code and message_text) or code not in room_manager.list_rooms():
-        return
 
     room = room_manager.get_room(code)
     room.user_message(message_text)
@@ -79,48 +81,21 @@ def on_user(data):
     utils.log_event("Send", name, message_text)
 
 
-@socketio.on("typing")
-def on_typing(data):
-    code = flask.session.get("room")
-    name = flask.session.get("name", "user")
-    message_text = data.get("data", "").strip()
-    data = content.MessageContent(
-        name=name,
-        role="user",
-        message=message_text,
-        is_typing=True
-    ).to_dict()
-
-    if not code or code not in room_manager.list_rooms():
-        return
-
-    # 일정 길이 이상 메시지면 GPT 반응 확률적으로 호출
-    if len(message_text) > 70 and random.randint(0, 1) == 1:
-        on_model(data, code)
-
-    # 실시간 타이핑 메시지 전송
-    socketio.emit("message", data, room=code)
-
-    utils.log_event("Keystroke", name, message_text)
-
-
 @socketio.on("start")
 def on_start(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     topic = data.get("topic", "").strip()
+
+    if not (code and topic) or code not in room_manager.list_rooms():
+        return
+
     data = content.MessageContent(
         name=name,
         role="system",
         message=f"토론 주제는 '{topic}' 입니다.",
         is_playing=True
     ).to_dict()
-
-    if not (code and topic) or code not in room_manager.list_rooms():
-        return
-
-    # room = room_manager.get_room(code)
-    # room.append_message(data)
 
     on_model(data, code)
 
@@ -132,11 +107,6 @@ def on_connect():
     code = flask.session.get("room")
     topic = flask.session.get("topic")
     name = flask.session.get("name", "user")
-    data = content.MessageContent(
-        name=name,
-        role="system",
-        message=f"{name} has entered the room"
-    ).to_dict()
 
     # 세션이나 유효한 방이 없으면 연결 중단
     if not (code and topic) or code not in room_manager.list_rooms():
@@ -147,38 +117,34 @@ def on_connect():
     room.add_member()
 
     flask_socketio.join_room(code)
-    # socketio.emit("notification", data, room=code)
 
-    utils.log_event("Connect", name, data.get("message"))
+    utils.log_event(
+        "Connect",
+        name,
+        f"User {name} connected to room {code}"
+    )
 
 
 @socketio.on("disconnect")
 def on_disconnect():
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
-    data = content.MessageContent(
-        name=name,
-        role="system",
-        message=f"{name} has left the room"
-    ).to_dict()
 
     if not code:
         return
 
     if code in room_manager.list_rooms():
         room = room_manager.get_room(code)
-        condition = room.remove_member()
-        if not condition:
+        if not room.remove_member():
             room_manager.remove_room(code)
 
     flask_socketio.leave_room(code)
-    # 퇴장 메시지 전송
-    flask_socketio.send(
-        data,
-        to=code
-    )
 
-    utils.log_event("Disconnect", name, data.get("message"))
+    utils.log_event(
+        "Disconnect",
+        name,
+        f"User {name} disconnected from room {code}"
+    )
 
 
 @app.route("/room")
@@ -210,7 +176,7 @@ def evaluate():
     try:
         room = room_manager.get_room(code)
         messages = room.messages
-        result = evaluate_from_messages(messages, topic)
+        result = evaluator.evaluate(messages, topic)
         flask.session["evaluation_result"] = result
         return flask.jsonify(result), 200
 

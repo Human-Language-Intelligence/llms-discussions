@@ -194,8 +194,8 @@
       const winnerId = finalWinner === 'GPT'
         ? '#coh-gpt, #div-gpt, #final-gpt'
         : finalWinner === 'GEMINI'
-        ? '#coh-gem, #div-gem, #final-gemini'
-        : '';
+          ? '#coh-gem, #div-gem, #final-gemini'
+          : '';
 
       if (winnerId) {
         document.querySelectorAll(winnerId).forEach(el => el.classList.add('winner'));

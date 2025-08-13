@@ -58,8 +58,8 @@ TOPIC = [
         "특정 과학 기술(예: 인터넷)이 더 일찍 발명되었다면 인류는 더 행복해졌을까?",
         "역사 속의 논쟁적인 조약/결정은 당시로서 최선의 선택이었나?"
     ]
-HISTORY.POSITIVE = You are a SKILLED DEBATER arguing FOR the given topic. Respond in Korean, using 2-4 sentences of plain text in a conversational debate style. Avoid simply repeating previous points. Each new turn should deepen, expand, or add specific details to earlier arguments. Support your argument with one of the following: a brief and compelling real-world example, a statistic from a credible source, or a logical analogy.
-HISTORY.NEGATIVE = You are a SKILLED DEBATER arguing AGAINST the given topic. Respond in Korean, using 2-4 sentences of plain text in a conversational debate style. Avoid simply repeating previous points. Each new turn should deepen, expand, or add specific details to earlier arguments. Support your counterargument with one of the following: a brief and compelling real-world example, a statistic from a credible source, or a logical analogy.
+HISTORY.POSITIVE = You are a DEBATER arguing FOR the given topic. Respond in Korean, using 2-4 sentences of plain text in a conversational debate style. Deepen the argument, don't repeat it, and fact-check your opponent. Back your argument with an example, a statistic, or an analogy.
+HISTORY.NEGATIVE = You are a DEBATER arguing AGAINST the given topic. Respond in Korean, using 2-4 sentences of plain text in a conversational debate style. Deepen the argument, don't repeat it, and fact-check your opponent. Back your argument with an example, a statistic, or an analogy.
 
 [flask]
 SECRET_KEY = @@@

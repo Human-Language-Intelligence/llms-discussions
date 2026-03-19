@@ -1,207 +1,441 @@
 {% extends 'base.html' %}
 {% block content %}
 <main class="result-section">
+
+  <!-- ───────────────── 페이지 헤더 ───────────────── -->
   <header class="page-header">
     <h1>📊 토론 평가 결과</h1>
-    <span id="winner-badge" class="winner-badge hidden">우승: <strong></strong></span>
+    <p class="subtitle" style="color:#f3f4f6;">{{ result.aggregate.total_agents }}명의 페르소나 에이전트가 평가한 결과입니다.</p>
   </header>
 
-  <section class="score-card">
-    <h2>🧑‍⚖️ LLM Judge 평가 (설득력)</h2>
-    <div class="judge-structured">
-      <div class="judge-kpis">
-        <div class="kv">
-          <span class="k-label">GPT</span>
-          <strong id="judge-gpt" class="k-value">--</strong>
-        </div>
-        <div class="kv">
-          <span class="k-label">GEMINI</span>
-          <strong id="judge-gemini" class="k-value">--</strong>
-        </div>
-        <div class="kv winner">
-          <span class="k-label">Winner</span>
-          <strong id="judge-winner" class="k-value">--</strong>
-        </div>
+  <!-- ───────────────── 페르소나 캐러셀 ───────────────── -->
+  <section class="carousel-wrapper">
+    <div class="carousel-header">
+      <h2>🎭 페르소나 에이전트별 평가</h2>
+      <div class="carousel-nav">
+        <button class="nav-btn" id="prev-btn" aria-label="이전">&#8592;</button>
+        <span class="carousel-counter"><span id="current-idx">1</span> / {{ result.agents | length }}</span>
+        <button class="nav-btn" id="next-btn" aria-label="다음">&#8594;</button>
       </div>
-
-      <div class="judge-desc">
-        <div class="desc-title">설명</div>
-        <p id="judge-desc" class="judge-raw"></p>
-      </div>
-
-      <!-- 숨김: 원본 문자열(파싱 실패 시 fallback 용) -->
-      <pre id="judge-raw" class="hidden">{{ result.judge_result }}</pre>
     </div>
+
+    <div class="carousel-track-outer">
+      <div class="carousel-track" id="carousel-track">
+
+        {% for agent in result.agents %}
+        <div class="carousel-slide" data-index="{{ loop.index0 }}">
+
+          <!-- 페르소나 배지 -->
+          <div class="persona-badge">
+            <span class="persona-icon">🧑</span>
+            <div class="persona-text">
+              <span class="persona-label">Agent #{{ agent.agent_index }} 페르소나</span>
+              <strong class="persona-name">{{ agent.persona_ko }}</strong>
+              <span class="persona-original">{{ agent.persona }}</span>
+            </div>
+          </div>
+
+          <!-- Judge 결과 -->
+          <div class="score-card agent-card">
+            <h3>🧑‍⚖️ LLM Judge 평가 (설득력)</h3>
+            <div class="judge-structured">
+              <div class="judge-kpis">
+                <div class="kv">
+                  <span class="k-label">GPT</span>
+                  <strong class="k-value judge-gpt-score">--</strong>
+                </div>
+                <div class="kv">
+                  <span class="k-label">GEMINI</span>
+                  <strong class="k-value judge-gem-score">--</strong>
+                </div>
+                <div class="kv winner">
+                  <span class="k-label">Winner</span>
+                  <strong class="k-value judge-winner-val">--</strong>
+                </div>
+              </div>
+              <div class="judge-desc">
+                <div class="desc-title">설명</div>
+                <p class="judge-desc-text"></p>
+              </div>
+              <pre class="judge-raw-data hidden">{{ agent.result.judge_result }}</pre>
+            </div>
+          </div>
+
+
+        </div><!-- /.carousel-slide -->
+        {% endfor %}
+
+      </div><!-- /#carousel-track -->
+    </div><!-- /.carousel-track-outer -->
   </section>
 
-  <div class="grid">
-    <section class="score-card">
-      <h3>🧠 Coherence Flow Score (일관성)</h3>
+  <!-- ───────────────── 종합 요약 섹션 ───────────────── -->
+  <section class="aggregate-section">
+    <h2>📈 종합 집계 결과 ({{ result.aggregate.total_agents }}개 에이전트 평균)</h2>
 
-      {% set coh_gpt = (result.coherence.gpt * 100) | round(1) %}
-      {% set coh_gem = (result.coherence.gemini * 100) | round(1) %}
+    <!-- 승자 집계 도넛 + 수치 -->
+    <div class="agg-top">
+      <div class="winner-tally-box score-card">
+        <h3>🗳️ 승자 투표 집계</h3>
+        <div class="tally-bars">
+          {% set total = result.aggregate.total_agents %}
+          {% set gpt_w = result.aggregate.winner_tally.GPT %}
+          {% set gem_w = result.aggregate.winner_tally.GEMINI %}
+          {% set tie_w = result.aggregate.winner_tally['무승부'] %}
 
-      <div class="kpi" id="coh-gpt">
-        <div class="kpi-row">
-          <span class="label">GPT</span>
-          <span class="value">{{ "%.4f"|format(result.coherence.gpt) }}</span>
+          <div class="tally-row">
+            <span class="tally-label">GPT</span>
+            <div class="tally-bar-wrap">
+              <div class="tally-bar" style="width: {{ (gpt_w / total * 100) | round(1) }}%;"></div>
+            </div>
+            <span class="tally-count">{{ gpt_w }}표</span>
+          </div>
+          <div class="tally-row">
+            <span class="tally-label">GEMINI</span>
+            <div class="tally-bar-wrap">
+              <div class="tally-bar alt" style="width: {{ (gem_w / total * 100) | round(1) }}%;"></div>
+            </div>
+            <span class="tally-count">{{ gem_w }}표</span>
+          </div>
+          <div class="tally-row">
+            <span class="tally-label">무승부</span>
+            <div class="tally-bar-wrap">
+              <div class="tally-bar tie" style="width: {{ (tie_w / total * 100) | round(1) }}%;"></div>
+            </div>
+            <span class="tally-count">{{ tie_w }}표</span>
+          </div>
         </div>
-        <div class="meter">
-          <div class="meter-fill" style="width: {{ coh_gpt }}%;"></div>
-        </div>
+
+        <!-- 최종 우승자 선언 -->
+        {% if gpt_w > gem_w and gpt_w > tie_w %}
+          <div class="agg-winner-badge gpt">🏆 종합 우승: GPT</div>
+        {% elif gem_w > gpt_w and gem_w > tie_w %}
+          <div class="agg-winner-badge gemini">🏆 종합 우승: GEMINI</div>
+        {% else %}
+          <div class="agg-winner-badge draw">🤝 종합 결과: 무승부</div>
+        {% endif %}
       </div>
 
-      <div class="kpi" id="coh-gem">
-        <div class="kpi-row">
-          <span class="label">GEMINI</span>
-          <span class="value">{{ "%.4f"|format(result.coherence.gemini) }}</span>
+      <!-- 평균 Judge 점수 -->
+      <div class="agg-judge-box score-card">
+        <h3>🧑‍⚖️ 평균 Judge 점수</h3>
+        <div class="agg-score-row">
+          <div class="agg-score-item">
+            <span class="agg-model-label">GPT</span>
+            <span class="agg-score-big">{{ "%.2f"|format(result.aggregate.judge_score.gpt.mean) }}</span>
+            <span class="agg-score-std">± {{ "%.2f"|format(result.aggregate.judge_score.gpt.std) }}</span>
+          </div>
+          <div class="agg-divider">vs</div>
+          <div class="agg-score-item">
+            <span class="agg-model-label">GEMINI</span>
+            <span class="agg-score-big">{{ "%.2f"|format(result.aggregate.judge_score.gemini.mean) }}</span>
+            <span class="agg-score-std">± {{ "%.2f"|format(result.aggregate.judge_score.gemini.std) }}</span>
+          </div>
         </div>
-        <div class="meter">
-          <div class="meter-fill alt" style="width: {{ coh_gem }}%;"></div>
+      </div>
+    </div>
+
+    <!-- 공통 객관 지표: Coherence / Diversity -->
+    <div class="grid">
+      <section class="score-card">
+        <h3>🧠 Coherence Flow Score (일관성)</h3>
+        {% set ac_gpt = (result.aggregate.coherence.gpt.mean * 100) | round(1) %}
+        {% set ac_gem = (result.aggregate.coherence.gemini.mean * 100) | round(1) %}
+        <div class="kpi">
+          <div class="kpi-row">
+            <span class="label">GPT</span>
+            <span class="value">
+{{ "%.4f"|format(result.aggregate.coherence.gpt.mean) }}
+            </span>
+          </div>
+          <div class="meter"><div class="meter-fill" style="width: {{ ac_gpt }}%;"></div></div>
         </div>
+        <div class="kpi">
+          <div class="kpi-row">
+            <span class="label">GEMINI</span>
+            <span class="value">
+{{ "%.4f"|format(result.aggregate.coherence.gemini.mean) }}
+            </span>
+          </div>
+          <div class="meter"><div class="meter-fill alt" style="width: {{ ac_gem }}%;"></div></div>
+        </div>
+      </section>
+
+      <section class="score-card">
+        <h3>🧾 Argument Diversity Index (다양성)</h3>
+        {% set ad_gpt = (result.aggregate.diversity.gpt.mean * 100) | round(1) %}
+        {% set ad_gem = (result.aggregate.diversity.gemini.mean * 100) | round(1) %}
+        <div class="kpi">
+          <div class="kpi-row">
+            <span class="label">GPT</span>
+            <span class="value">
+{{ "%.4f"|format(result.aggregate.diversity.gpt.mean) }}
+            </span>
+          </div>
+          <div class="meter"><div class="meter-fill" style="width: {{ ad_gpt }}%;"></div></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-row">
+            <span class="label">GEMINI</span>
+            <span class="value">
+{{ "%.4f"|format(result.aggregate.diversity.gemini.mean) }}
+            </span>
+          </div>
+          <div class="meter"><div class="meter-fill alt" style="width: {{ ad_gem }}%;"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 에이전트 목록 요약 테이블 -->
+    <section class="score-card agent-table-card">
+      <h3 style="color: #111;">📋 에이전트 목록 요약</h3>
+      <div class="table-scroll">
+        <table class="agent-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>페르소나</th>
+              <th>Judge GPT</th>
+              <th>Judge GEMINI</th>
+              <th>Winner</th>
+            </tr>
+          </thead>
+          <tbody id="agent-table-body">
+            {% for agent in result.agents %}
+            <tr class="agent-row" data-raw="{{ agent.result.judge_result | e }}">
+              <td>{{ agent.agent_index }}</td>
+              <td class="persona-cell">
+                {{ agent.persona_ko }}
+                <span class="persona-cell-orig">{{ agent.persona }}</span>
+              </td>
+              <td class="score-cell gpt-cell">--</td>
+              <td class="score-cell gem-cell">--</td>
+              <td class="winner-cell">--</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </section>
-
-    <section class="score-card">
-      <h3>🧾 Argument Diversity Index (다양성)</h3>
-
-      {% set div_gpt = (result.diversity.gpt * 100) | round(1) %}
-      {% set div_gem = (result.diversity.gemini * 100) | round(1) %}
-
-      <div class="kpi" id="div-gpt">
-        <div class="kpi-row">
-          <span class="label">GPT</span>
-          <span class="value">{{ "%.4f"|format(result.diversity.gpt) }}</span>
-        </div>
-        <div class="meter">
-          <div class="meter-fill" style="width: {{ div_gpt }}%;"></div>
-        </div>
-      </div>
-
-      <div class="kpi" id="div-gem">
-        <div class="kpi-row">
-          <span class="label">GEMINI</span>
-          <span class="value">{{ "%.4f"|format(result.diversity.gemini) }}</span>
-        </div>
-        <div class="meter">
-          <div class="meter-fill alt" style="width: {{ div_gem }}%;"></div>
-        </div>
-      </div>
-    </section>
-  </div>
+  </section>
 
   <div class="actions">
     <a href="{{ url_for('home') }}" class="btn">← 돌아가기</a>
   </div>
 </main>
 
+<!-- ───────────────── 스타일 ───────────────── -->
+<style>
+  /* ── 캐러셀 ── */
+  .carousel-wrapper {
+    margin-bottom: 2.5rem;
+  }
+  .carousel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: 1rem;
+  }
+  .carousel-nav {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+  .nav-btn {
+    background: var(--color-surface, #fff);
+    border: 2px solid var(--color-border, #ddd);
+    border-radius: 50%;
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-btn:hover { background: var(--color-primary, #4f46e5); color: #fff; border-color: var(--color-primary, #4f46e5); }
+  .nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .carousel-counter { font-weight: 600; font-size: .95rem; min-width: 4rem; text-align: center; }
+
+  .carousel-track-outer { overflow: hidden; }
+  .carousel-track {
+    display: flex;
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
+  }
+  .carousel-slide {
+    min-width: 100%;
+    box-sizing: border-box;
+    padding: 0 .25rem;
+  }
+
+  /* ── 페르소나 배지 ── */
+  .persona-badge {
+    display: flex;
+    align-items: flex-start;
+    gap: .8rem;
+    background: linear-gradient(135deg, var(--color-primary-light, #ede9fe), var(--color-surface, #f9fafb));
+    border: 1.5px solid var(--color-primary, #4f46e5);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .persona-icon { font-size: 2rem; line-height: 1; }
+  .persona-text { display: flex; flex-direction: column; gap: .2rem; }
+  .persona-label { font-size: .75rem; color: var(--color-primary, #4f46e5); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .persona-name { font-size: 1rem; font-weight: 700; color: var(--color-text, #111); line-height: 1.4; }
+  .persona-original { display: block; font-size: .75rem; color: var(--color-primary, #4f46e5); opacity: .7; margin-top: .15rem; font-weight: 400; }
+  .persona-cell-orig { display: block; font-size: .75rem; color: #9ca3af; margin-top: .1rem; }
+
+  /* ── 종합 섹션 ── */
+  .aggregate-section { margin-top: 3rem; }
+  .aggregate-section h2 { margin-bottom: 1.5rem; }
+  .agg-top { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  @media (max-width: 640px) { .agg-top { grid-template-columns: 1fr; } }
+
+  /* 승자 투표 */
+  .tally-bars { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1rem; }
+  .tally-row { display: flex; align-items: center; gap: .6rem; }
+  .tally-label { width: 4.5rem; font-weight: 600; font-size: .9rem; }
+  .tally-bar-wrap { flex: 1; background: var(--color-border, #e5e7eb); border-radius: 999px; height: 14px; overflow: hidden; }
+  .tally-bar { height: 100%; background: var(--color-primary, #4f46e5); border-radius: 999px; transition: width .4s; }
+  .tally-bar.alt { background: var(--color-secondary, #10b981); }
+  .tally-bar.tie { background: var(--color-muted, #9ca3af); }
+  .tally-count { width: 2.5rem; text-align: right; font-size: .85rem; color: #fff; font-weight: 600; }
+
+  .agg-winner-badge {
+    text-align: center; font-size: 1.1rem; font-weight: 700;
+    padding: .6rem 1rem; border-radius: 8px; margin-top: .5rem;
+  }
+  .agg-winner-badge.gpt    { background: #ede9fe; color: #4f46e5; }
+  .agg-winner-badge.gemini { background: #d1fae5; color: #059669; }
+  .agg-winner-badge.draw   { background: #f3f4f6; color: #6b7280; }
+
+  /* 평균 Judge 박스 */
+  .agg-score-row { display: flex; align-items: center; justify-content: space-around; padding: 1rem 0; }
+  .agg-score-item { text-align: center; display: flex; flex-direction: column; gap: .2rem; }
+  .agg-model-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; color: #fff; }
+  .agg-score-big { font-size: 2.5rem; font-weight: 800; color: var(--color-primary, #4f46e5); line-height: 1; }
+  .agg-score-std { font-size: .8rem; color: var(--color-muted, #9ca3af); }
+  .agg-divider { font-size: 1.2rem; font-weight: 700; color: var(--color-muted, #9ca3af); }
+
+  /* std 주석 */
+  .std-note { font-size: .75rem; color: var(--color-muted, #9ca3af); font-weight: 400; }
+
+  /* 에이전트 테이블 */
+  .agent-table-card { margin-top: 1.25rem; background: #fff !important; }
+  .table-scroll { overflow-x: auto; background: #fff; border-radius: 8px; }
+  .agent-table { width: 100%; border-collapse: collapse; font-size: .9rem; background: #fff; }
+  .agent-table th {
+    background: #f3f4f6;
+    color: #111;
+    padding: .6rem .8rem; text-align: left;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  .agent-table td { padding: .55rem .8rem; border-bottom: 1px solid #e5e7eb; vertical-align: top; color: #111; background: #fff; }
+  .agent-table tr:last-child td { border-bottom: none; }
+  .persona-cell { max-width: 280px; font-size: .85rem; color: #374151; }
+  .score-cell { font-weight: 700; text-align: center; }
+  .gpt-cell { color: var(--color-primary, #4f46e5); }
+  .gem-cell { color: var(--color-secondary, #059669); }
+  .winner-cell { text-align: center; font-weight: 700; }
+
+  .subtitle { color: var(--color-muted, #6b7280); margin-top: .25rem; font-size: .95rem; }
+
+  /* 공통 객관 지표 헤더 */
+  .common-metrics-header { margin: 1.5rem 0 .75rem; }
+  .common-metrics-header h3 { margin-bottom: .3rem; }
+  .common-metrics-desc { font-size: .85rem; color: #fff; opacity: .75; margin: 0; }
+
+  .hidden { display: none !important; }
+</style>
+
+<!-- ───────────────── 스크립트 ───────────────── -->
 <script>
-  (function () {
-    // 원본 judge 문자열
-    const rawEl = document.getElementById('judge-raw');
-    const raw = rawEl?.textContent?.trim() || '';
+(function () {
+  const headerRe = /GPT\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}/i;
+  // ─── 슬라이드 파싱 + 채우기 ───
+  function parseAndFillSlide(slide) {
+    const rawEl = slide.querySelector('.judge-raw-data');
+    const raw = rawEl ? rawEl.textContent.trim() : '';
 
-    // 타깃 엘리먼트
-    const gptEl = document.getElementById('judge-gpt');
-    const gemEl = document.getElementById('judge-gemini');
-    const winEl = document.getElementById('judge-winner');
-    const descEl = document.getElementById('judge-desc');
-    const badge = document.getElementById('winner-badge');
-
-    // 1) 점수/우승자 파싱
-    const headerRe = /GPT\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*GEMINI\s*:\s*\[\[?(\d+(?:\.\d+)?)\]?\]\s*[,;]?\s*winner\s*:\s*\[\[?([\w가-힣]+)\]?\]/i;
-    const m = raw.match(headerRe);
+    const gptEl  = slide.querySelector('.judge-gpt-score');
+    const gemEl  = slide.querySelector('.judge-gem-score');
+    const winEl  = slide.querySelector('.judge-winner-val');
+    const descEl = slide.querySelector('.judge-desc-text');
 
     let judgeGPT = 0, judgeGem = 0, winner = '';
 
+    const m = raw.match(headerRe);
     if (m) {
       judgeGPT = parseFloat(m[1]);
       judgeGem = parseFloat(m[2]);
-      winner = (m[3] || '').toUpperCase();
+      winner   = m[3].toUpperCase();
 
       if (gptEl) gptEl.textContent = judgeGPT.toFixed(2);
       if (gemEl) gemEl.textContent = judgeGem.toFixed(2);
       if (winEl) winEl.textContent = winner;
 
-      // 설명 추출
-      let desc = raw.slice(m.index + m[0].length).trim();
-      desc = desc.replace(/^[\s:.,\-–—]+/, '');
+      let desc = raw.slice(m.index + m[0].length).trim().replace(/^[\s:.,\-–—]+/, '');
       if (!desc) desc = raw;
       if (descEl) descEl.textContent = desc;
     } else {
       if (descEl) descEl.textContent = raw;
     }
 
-    // 2) coherence & diversity 스코어 가져오기
-    const cohGPT = parseFloat(document.querySelector("#coh-gpt .value")?.textContent || "0");
-    const cohGem = parseFloat(document.querySelector("#coh-gem .value")?.textContent || "0");
-    const divGPT = parseFloat(document.querySelector("#div-gpt .value")?.textContent || "0");
-    const divGem = parseFloat(document.querySelector("#div-gem .value")?.textContent || "0");
+    return { judgeGPT, judgeGem, winner };
+  }
 
-    // 3) 최종 점수 계산 (2:1:1 비율 → 최대 22점 기준 환산)
-    const maxScore = 22.0;
-    const rawFinalGPT = (judgeGPT * 2) + cohGPT + divGPT;
-    const rawFinalGem = (judgeGem * 2) + cohGem + divGem;
-
-    const finalGPT = (rawFinalGPT / maxScore) * 100;
-    const finalGem = (rawFinalGem / maxScore) * 100;
-
-    // 결과를 출력
-    const finalScoreBox = document.createElement("section");
-    finalScoreBox.className = "score-card";
-    finalScoreBox.innerHTML = `
-      <h3>🏆 최종 환산 점수</h3>
-      <div class="kpi" id="final-gpt">
-        <div class="kpi-row">
-          <span class="label">GPT</span>
-          <span class="value" title="(${judgeGPT.toFixed(2)}×2 + ${cohGPT.toFixed(4)} + ${divGPT.toFixed(4)}) / 22 × 100">
-            ${finalGPT.toFixed(2)} / 100
-          </span>
-        </div>
-        <div class="meter">
-          <div class="meter-fill" style="width: ${finalGPT.toFixed(2)}%;"></div>
-        </div>
-      </div>
-      <div class="kpi" id="final-gemini">
-        <div class="kpi-row">
-          <span class="label">GEMINI</span>
-          <span class="value" title="(${judgeGem.toFixed(2)}×2 + ${cohGem.toFixed(4)} + ${divGem.toFixed(4)}) / 22 × 100">
-            ${finalGem.toFixed(2)} / 100
-          </span>
-        </div>
-        <div class="meter">
-          <div class="meter-fill alt" style="width: ${finalGem.toFixed(2)}%;"></div>
-        </div>
-      </div>
-    `;
-
-    // 화면에 추가
-    const grid = document.querySelector(".grid");
-    if (grid) {
-      grid.insertAdjacentElement("afterend", finalScoreBox);
-    }
-
-    // 4) 우승자 표시
-    let finalWinner = '';
-    if (finalGPT > finalGem) finalWinner = 'GPT';
-    else if (finalGem > finalGPT) finalWinner = 'GEMINI';
-    else finalWinner = '무승부';
-
-    if (badge && finalWinner) {
-      badge.querySelector('strong').textContent = finalWinner;
-      badge.classList.remove('hidden');
-
-      const winnerId = finalWinner === 'GPT'
-        ? '#coh-gpt, #div-gpt, #final-gpt'
-        : finalWinner === 'GEMINI'
-          ? '#coh-gem, #div-gem, #final-gemini'
-          : '';
-
-      if (winnerId) {
-        document.querySelectorAll(winnerId).forEach(el => el.classList.add('winner'));
+  // ─── 테이블 채우기 ───
+  function fillTable() {
+    const rows = document.querySelectorAll('#agent-table-body .agent-row');
+    rows.forEach(row => {
+      const raw = row.dataset.raw || '';
+      const m = raw.match(headerRe);
+      if (m) {
+        row.querySelector('.gpt-cell').textContent = parseFloat(m[1]).toFixed(2);
+        row.querySelector('.gem-cell').textContent = parseFloat(m[2]).toFixed(2);
+        const w = m[3].toUpperCase();
+        const wCell = row.querySelector('.winner-cell');
+        wCell.textContent = w;
+        wCell.style.color = w === 'GPT' ? '#4f46e5' : w === 'GEMINI' ? '#059669' : '#9ca3af';
       }
-    }
-  })();
+    });
+  }
+
+  // ─── 캐러셀 초기화 ───
+  const slides  = document.querySelectorAll('.carousel-slide');
+  const track   = document.getElementById('carousel-track');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const counterEl = document.getElementById('current-idx');
+
+  let current = 0;
+
+  // 모든 슬라이드 파싱
+  slides.forEach(slide => parseAndFillSlide(slide));
+  fillTable();
+
+  function goTo(idx) {
+    current = Math.max(0, Math.min(idx, slides.length - 1));
+    track.style.transform = `translateX(-${current * 100}%)`;
+    counterEl.textContent = current + 1;
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === slides.length - 1;
+  }
+
+  prevBtn.addEventListener('click', () => goTo(current - 1));
+  nextBtn.addEventListener('click', () => goTo(current + 1));
+
+  // 키보드 지원
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  goTo(current - 1);
+    if (e.key === 'ArrowRight') goTo(current + 1);
+  });
+
+  goTo(0);
+})();
 </script>
 
 {% endblock %}

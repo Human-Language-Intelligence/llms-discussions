@@ -1,5 +1,6 @@
 import json
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 import pandas as pd
 import openai
@@ -377,11 +378,11 @@ class PersonaDebateEvaluator:
     ) -> Dict[str, Any]:
         """
         10개의 랜덤 페르소나 에이전트로 토론을 평가합니다.
-
+ 
         Args:
             messages: 평가할 토론 메시지 리스트.
             topic: 토론 주제.
-
+ 
         Returns:
             {
               "agents": [
@@ -396,26 +397,67 @@ class PersonaDebateEvaluator:
             }
         """
         personas = self._load_random_personas()
-        print("[번역 중] 페르소나 한국어 번역...")
-        personas_ko = self._translate_personas(personas)
-        agent_results = []
-
-        for idx, (persona, persona_ko) in enumerate(zip(personas, personas_ko), start=1):
+ 
+        # BERTScore/Diversity는 thread-safe하지 않으므로 메인 스레드에서 한 번만 계산
+        df = self.evaluator._prepare_dataframe(messages)
+        gpt_turns = df[df["role"] == self.evaluator.PROS_ROLE]["message"].tolist()
+        gemini_turns = df[df["role"] == self.evaluator.CONS_ROLE]["message"].tolist()
+ 
+        print("[공통 지표 계산 중] Coherence / Diversity...")
+        coherence_gpt    = self.evaluator._calculate_coherence_score(gpt_turns)
+        coherence_gemini = self.evaluator._calculate_coherence_score(gemini_turns)
+        diversity_gpt    = self.evaluator._calculate_diversity_index(gpt_turns)
+        diversity_gemini = self.evaluator._calculate_diversity_index(gemini_turns)
+        shared_metrics = {
+            "coherence": {"gpt": round(coherence_gpt, 4), "gemini": round(coherence_gemini, 4)},
+            "diversity": {"gpt": round(diversity_gpt, 4), "gemini": round(diversity_gemini, 4)},
+        }
+ 
+        # LLM judge 호출만 병렬화 (API I/O bound → thread-safe)
+        def _judge_one(args):
+            idx, persona = args
             print(f"[{idx}/{self.num_agents}] 페르소나 평가 중: {persona[:60]}...")
-            result = self.evaluator.evaluate(messages, topic=topic, persona=persona)
-            agent_results.append({
+            prompt = self.evaluator._generate_judge_prompt(df, topic, persona=persona)
+            judge_result = self.evaluator._get_gpt_judgement(prompt, persona=persona)
+            print(f"[{idx}/{self.num_agents}] 완료")
+            return idx, persona, judge_result
+ 
+        print("[병렬 실행 시작] 번역 + LLM Judge 평가...")
+        with ThreadPoolExecutor(max_workers=self.num_agents + 1) as executor:
+            translate_future = executor.submit(self._translate_personas, personas)
+            judge_futures = {
+                executor.submit(_judge_one, (idx, persona)): idx
+                for idx, persona in enumerate(personas, start=1)
+            }
+ 
+            raw_results = {}
+            for future in as_completed(judge_futures):
+                idx, persona, judge_result = future.result()
+                raw_results[idx] = (persona, judge_result)
+ 
+            personas_ko = translate_future.result()
+ 
+        # agent_index 순서로 정렬
+        agent_results = [
+            {
                 "agent_index": idx,
-                "persona": persona,           # 원문 (프롬프트용)
-                "persona_ko": persona_ko,     # 번역문 (UI 표시용)
-                "result": result,
-            })
-
+                "persona": raw_results[idx][0],
+                "persona_ko": personas_ko[idx - 1],
+                "result": {
+                    "judge_result": raw_results[idx][1],
+                    **shared_metrics,
+                },
+            }
+            for idx in sorted(raw_results)
+        ]
+ 
         aggregate = self._compute_aggregate([a["result"] for a in agent_results])
-
+ 
         return {
             "agents": agent_results,
             "aggregate": aggregate,
         }
+ 
 
 
 if __name__ == '__main__':

@@ -1,14 +1,14 @@
 import json
-import numpy as np
-import pandas as pd
-import openai
+from typing import Any, Dict, List, Optional, Tuple
 
-from typing import List, Dict, Any, Optional, Tuple
-from sklearn.feature_extraction.text import CountVectorizer
+import numpy as np
+import openai
+import pandas as pd
 from bert_score import score as bert_score
 from googleapiclient import discovery
+from sklearn.feature_extraction.text import CountVectorizer
 
-from .config import CONFIG as _CONFIG
+from source.config import CONFIG as _CONFIG
 
 
 class DebateEvaluator:

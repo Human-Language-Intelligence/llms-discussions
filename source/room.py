@@ -1,7 +1,7 @@
 import threading
 
-from . import worker, gemini, chatgpt, tts
-from .config import CONFIG as _CONFIG
+from source import chatgpt, gemini, tts, worker
+from source.config import CONFIG as _CONFIG
 
 
 class Room:

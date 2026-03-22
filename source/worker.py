@@ -1,8 +1,8 @@
-import threading
-import queue
 import base64
+import queue
+import threading
 
-from . import content
+from source import content
 
 
 class ModelWorker:

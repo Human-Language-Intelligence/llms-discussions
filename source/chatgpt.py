@@ -1,6 +1,6 @@
 from openai import OpenAI
 
-from .config import CONFIG as _CONFIG
+from source.config import CONFIG as _CONFIG
 
 
 class ChatGPT():

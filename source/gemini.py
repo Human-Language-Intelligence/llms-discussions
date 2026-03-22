@@ -1,7 +1,7 @@
-from google.oauth2 import service_account
 from google import genai
+from google.oauth2 import service_account
 
-from .config import CONFIG as _CONFIG
+from source.config import CONFIG as _CONFIG
 
 
 class Gemini():

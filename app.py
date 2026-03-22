@@ -1,11 +1,11 @@
-import random
 import json
+import random
+import sys
 
 import flask
 import flask_socketio
-import sys
 
-from source import config, manager, utils, content
+from source import config, content, manager, utils
 from source.eval import DebateEvaluator
 
 TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])

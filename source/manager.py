@@ -1,7 +1,7 @@
 import string
 import random
 
-from . import room, event
+from source import room, event
 
 
 class RoomManager:

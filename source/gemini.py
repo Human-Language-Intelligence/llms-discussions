@@ -16,6 +16,7 @@ class Gemini():
     def connect_session(self) -> None:
         self.client = genai.Client(
             vertexai=True,
+            # api_key=_CONFIG["google"]["GCP.API_KEY"],
             credentials=service_account.Credentials.from_service_account_file(
                 _CONFIG["google"]["CREDENTIALS"],
                 scopes=[
@@ -23,10 +24,10 @@ class Gemini():
                 ]
             ),
             project=_CONFIG["google"]["GCP.PROJECT_ID"],
-            location=_CONFIG["google"]["GCP.LOCATION"],
-            http_options=genai.types.HttpOptions(
-                api_version="v1"
-            )
+            # location=_CONFIG["google"]["GCP.LOCATION"],
+            # http_options=genai.types.HttpOptions(
+            #     api_version="v1"
+            # )
         )
         self.create_chat()
 
@@ -35,6 +36,10 @@ class Gemini():
             model=self.model_name,
             config=genai.types.GenerateContentConfig(
                 system_instruction=self.system_prompt,
+                thinking_config=genai.types.ThinkingConfig(
+                    # thinking_budget=-1,
+                    thinking_level="low"
+                ),
                 safety_settings=[
                     genai.types.SafetySetting(
                         category=genai.types.HarmCategory.HARM_CATEGORY_UNSPECIFIED,
@@ -60,9 +65,9 @@ class Gemini():
                         category=genai.types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
                         threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
                     ),
-                ]
+                ],
             ),
-            history=self.conversations
+            history=self.conversations,
         )
 
     def get_response(self, text: str) -> str:

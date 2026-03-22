@@ -9,7 +9,7 @@ class RoomManager:
         self.rooms = {}
         self.event_bus = event.EventBus()
 
-    def create_room(self, model_pros, model_cons):
+    def create_room(self, model_pros, model_cons) -> str:
         room_id = self.generate_room_id(2)
         self.rooms[room_id] = room.Room(
             room_id=room_id,
@@ -20,19 +20,19 @@ class RoomManager:
         self.rooms[room_id].start_threads()
         return room_id
 
-    def get_room(self, room_id):
+    def get_room(self, room_id) -> room.Room:
         return self.rooms.get(room_id)
 
-    def remove_room(self, room_id):
+    def remove_room(self, room_id) -> None:
         room = self.get_room(room_id)
         if room:
             room.stop_threads()
             self.rooms.pop(room_id, None)
 
-    def list_rooms(self):
+    def list_rooms(self) -> list:
         return list(self.rooms.keys())
 
-    def generate_room_id(self, length=2):
+    def generate_room_id(self, length=2) -> str:
         while True:
             code = ""
             for _ in range(length):

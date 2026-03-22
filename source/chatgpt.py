@@ -29,7 +29,7 @@ class ChatGPT():
         response = self.client.responses.create(
             model=self.model_name,
             reasoning={
-                "effort": "minimal"
+                "effort": "low"
             },
             input=self.conversations
         )

@@ -15,27 +15,18 @@ app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 room_manager = manager.RoomManager()
 evaluator = PersonaDebateEvaluator(
-    persona_jsonl_path="./persona/filtered_persona.jsonl",
-    num_agents=10
+    persona_jsonl_path=config.CONFIG["eval"]["PERSONA"], num_agents=10
 )
 
 evaluation_store = {}
 
 room_manager.event_bus.subscribe(
     "pros-response",
-    lambda data: socketio.emit(
-        "pros-message",
-        data.get("data"),
-        room=data.get("room")
-    )
+    lambda data: socketio.emit("pros-message", data.get("data"), room=data.get("room")),
 )
 room_manager.event_bus.subscribe(
     "cons-response",
-    lambda data: socketio.emit(
-        "cons-message",
-        data.get("data"),
-        room=data.get("room")
-    )
+    lambda data: socketio.emit("cons-message", data.get("data"), room=data.get("room")),
 )
 
 
@@ -73,10 +64,7 @@ def on_user(data):
         return
 
     data = content.MessageContent(
-        name=name,
-        role="user",
-        message=message_text,
-        is_playing=True
+        name=name, role="user", message=message_text, is_playing=True
     ).to_dict()
 
     room = room_manager.get_room(code)
@@ -99,7 +87,7 @@ def on_start(data):
         name=name,
         role="system",
         message=f"토론 주제는 '{topic}' 입니다.",
-        is_playing=True
+        is_playing=True,
     ).to_dict()
 
     on_model(data, code)
@@ -123,11 +111,7 @@ def on_connect():
 
     flask_socketio.join_room(code)
 
-    utils.log_event(
-        "Connect",
-        name,
-        f"User {name} connected to room {code}"
-    )
+    utils.log_event("Connect", name, f"User {name} connected to room {code}")
 
 
 @socketio.on("disconnect")
@@ -145,11 +129,7 @@ def on_disconnect():
 
     flask_socketio.leave_room(code)
 
-    utils.log_event(
-        "Disconnect",
-        name,
-        f"User {name} disconnected from room {code}"
-    )
+    utils.log_event("Disconnect", name, f"User {name} disconnected from room {code}")
 
 
 @app.route("/room")
@@ -162,10 +142,7 @@ def room():
 
     room = room_manager.get_room(code)
     return flask.render_template(
-        "room.html",
-        code=code,
-        topic=topic,
-        messages=room.messages
+        "room.html", code=code, topic=topic, messages=room.messages
     )
 
 
@@ -214,9 +191,7 @@ def home():
 
         if not topic:
             return flask.render_template(
-                "home.html",
-                error="Please enter a topic.",
-                random_topics=random_topics
+                "home.html", error="Please enter a topic.", random_topics=random_topics
             )
 
         code = room_manager.create_room(model_pros, model_cons)
@@ -227,10 +202,7 @@ def home():
 
         return flask.redirect(flask.url_for("room"))
 
-    return flask.render_template(
-        "home.html",
-        random_topics=random_topics
-    )
+    return flask.render_template("home.html", random_topics=random_topics)
 
 
 if __name__ == "__main__":

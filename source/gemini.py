@@ -1,8 +1,6 @@
 from google import genai
 from google.oauth2 import service_account
 
-from source.config import CONFIG as _CONFIG
-
 
 class Gemini:
     def __init__(self, model, credential_file=None, project=None) -> None:

@@ -4,12 +4,17 @@ from google.oauth2 import service_account
 from source.config import CONFIG as _CONFIG
 
 
-class Gemini():
-    def __init__(self, system_prompt: str = "") -> None:
-        self.model_name = _CONFIG["google"]["GEMINI.MODEL_NAME"]
+class Gemini:
+    def __init__(self, model, credential_file=None, project=None) -> None:
+        self.model_name = model
+        self.project = project
+        self.credential_file = service_account.Credentials.from_service_account_file(
+            filename=credential_file,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
         self.client = None
         self.conversations = []
-        self.system_prompt = system_prompt
+        self.system_prompt = ""
 
         self.connect_session()
 
@@ -17,13 +22,8 @@ class Gemini():
         self.client = genai.Client(
             vertexai=True,
             # api_key=_CONFIG["google"]["GCP.API_KEY"],
-            credentials=service_account.Credentials.from_service_account_file(
-                _CONFIG["google"]["CREDENTIALS"],
-                scopes=[
-                    "https://www.googleapis.com/auth/cloud-platform"
-                ]
-            ),
-            project=_CONFIG["google"]["GCP.PROJECT_ID"],
+            credentials=self.credential_file,
+            project=self.project,
             # location=_CONFIG["google"]["GCP.LOCATION"],
             # http_options=genai.types.HttpOptions(
             #     api_version="v1"
@@ -70,6 +70,10 @@ class Gemini():
             history=self.conversations,
         )
 
+    def set_system_prompt(self, system_prompt: str) -> None:
+        self.system_prompt = system_prompt
+        self.create_chat()
+
     def get_response(self, text: str) -> str:
         if not text:
             return ""
@@ -84,22 +88,19 @@ class Gemini():
         chat = genai.types.Content(
             role=content.get("role"),
             parts=[
-                genai.types.Part.from_text(text=part.get("text")) for part in content.get("parts")
-            ]
+                genai.types.Part.from_text(text=part.get("text"))
+                for part in content.get("parts")
+            ],
         )
         return chat
 
     def convert_history(self, contents: list) -> None:
-        self.conversations = [
-            self.convert_content(content) for content in contents
-        ]
+        self.conversations = [self.convert_content(content) for content in contents]
 
     def append_history(self, role: str, text: str) -> None:
         content = {
             "role": role,
-            "parts": [
-                {"text": text}
-            ],
+            "parts": [{"text": text}],
         }
         content = self.convert_content(content)
 

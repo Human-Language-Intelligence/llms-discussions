@@ -1,25 +1,22 @@
 from openai import OpenAI
 
-from source.config import CONFIG as _CONFIG
 
-
-class ChatGPT():
-    def __init__(self, system_prompt: str = "") -> None:
-        self.model_name = _CONFIG["openai"]["GPT.MODEL_NAME"]
+class ChatGPT:
+    def __init__(self, model, key=None) -> None:
+        self.model_name = model
+        self.key = key
         self.client = None
+        self.system_prompt = ""
         self.conversations = []
 
-        if system_prompt:
-            self.append_history(
-                role="system",
-                text=system_prompt
-            )
         self.connect_session()
 
     def connect_session(self) -> None:
-        self.client = OpenAI(
-            api_key=_CONFIG["openai"]["GPT.API_KEY"]
-        )
+        self.client = OpenAI(api_key=self.key)
+
+    def set_system_prompt(self, system_prompt: str) -> None:
+        self.system_prompt = system_prompt
+        self.append_history(role="system", text=system_prompt)
 
     def get_response(self, text: str = "") -> str:
         if not text:
@@ -27,11 +24,7 @@ class ChatGPT():
 
         self.append_history(role="user", text=text)
         response = self.client.responses.create(
-            model=self.model_name,
-            reasoning={
-                "effort": "low"
-            },
-            input=self.conversations
+            model=self.model_name, reasoning={"effort": "low"}, input=self.conversations
         )
         output = response.output_text
         self.append_history("assistant", output)
@@ -39,8 +32,5 @@ class ChatGPT():
         return output
 
     def append_history(self, role: str, text: str) -> None:
-        history = {
-            "role": role,
-            "content": text
-        }
+        history = {"role": role, "content": text}
         self.conversations.append(history)

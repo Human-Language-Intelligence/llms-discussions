@@ -12,37 +12,43 @@ class Room:
         self.members = 0
         self.count = 0
         self.messages = []
+        self.models = {
+            "gpt": chatgpt.ChatGPT(
+                _CONFIG["openai"]["GPT.MODEL_NAME"],
+                key=_CONFIG["openai"]["GPT.API_KEY"],
+            ),
+            "gemini": gemini.Gemini(
+                _CONFIG["google"]["GEMINI.MODEL_NAME"],
+                credential_file=_CONFIG["google"]["CREDENTIALS"],
+                project=_CONFIG["google"]["GCP.PROJECT_ID"],
+            ),
+        }
         self.threads = {
             "pros": worker.ModelWorker(
                 self,
                 "pros",
-                self.select_model(model_pros, "pros"),
-                tts.TTS(1),
+                model=self.select_model(model_pros, "pros"),
+                tts=tts.TTS(1, credential_file=_CONFIG["google"]["CREDENTIALS"]),
             ),
             "cons": worker.ModelWorker(
                 self,
                 "cons",
-                self.select_model(model_cons, "cons"),
-                tts.TTS(3)
-            )
+                model=self.select_model(model_cons, "cons"),
+                tts=tts.TTS(3, credential_file=_CONFIG["google"]["CREDENTIALS"]),
+            ),
         }
 
-        self.threads["pros"].set_output_queue(
-            self.threads["cons"].input_queue
-        )
-        self.threads["cons"].set_output_queue(
-            self.threads["pros"].input_queue
-        )
+        self.threads["pros"].set_output_queue(self.threads["cons"].input_queue)
+        self.threads["cons"].set_output_queue(self.threads["pros"].input_queue)
 
     def select_model(self, model, role):
-        models = {
-            "gpt": chatgpt.ChatGPT,
-            "gemini": gemini.Gemini
-        }
         prompt_key = "HISTORY.POSITIVE" if role == "pros" else "HISTORY.NEGATIVE"
         prompt = _CONFIG["default"][prompt_key]
+        model_obj = self.models.get(model)
 
-        return models.get(model)(prompt)
+        model_obj.set_system_prompt(prompt)
+
+        return model_obj
 
     def start_debate(self, topic: str):
         self.threads["pros"].enqueue_input(topic)

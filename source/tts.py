@@ -1,18 +1,16 @@
 from google.cloud import texttospeech
 from google.oauth2 import service_account
 
-from source.config import CONFIG as _CONFIG
 
-
-class TTS():
-    def __init__(self, voice=1) -> None:
+class TTS:
+    def __init__(self, voice=1, credential_file=None) -> None:
         voices = {
             1: "ko-KR-Standard-A",
             2: "ko-KR-Standard-B",
             3: "ko-KR-Standard-C",
             4: "ko-KR-Standard-D",
             5: "ko-KR-Chirp3-HD-Aoede",
-            6: "ko-KR-Chirp3-HD-Orus"
+            6: "ko-KR-Chirp3-HD-Orus",
         }
         self.config = {
             "language": "ko-KR",
@@ -21,7 +19,7 @@ class TTS():
 
         self._client = texttospeech.TextToSpeechClient(
             credentials=service_account.Credentials.from_service_account_file(
-                filename=_CONFIG["google"]["CREDENTIALS"]
+                filename=credential_file
             )
         )
         self.voice = texttospeech.VoiceSelectionParams(
@@ -36,9 +34,7 @@ class TTS():
     def request(self, text: str) -> bytes:
         synthesis_input = texttospeech.SynthesisInput(text=text)
         response = self._client.synthesize_speech(
-            input=synthesis_input,
-            voice=self.voice,
-            audio_config=self.audio_config
+            input=synthesis_input, voice=self.voice, audio_config=self.audio_config
         )
 
         return response.audio_content

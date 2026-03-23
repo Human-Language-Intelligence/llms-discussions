@@ -1,12 +1,13 @@
 import json
 import random
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import openai
 import pandas as pd
-from bert_score import score as bert_score
+from bert_score.scorer import BERTScorer
 from googleapiclient import discovery
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -38,7 +39,6 @@ class DebateEvaluator:
             api_keys (Dict[str, str]): 'openai'와 'google' API 키를 포함하는 딕셔너리.
         """
         self.openai_client = openai.OpenAI(api_key=_CONFIG["openai"]["GPT.API_KEY"])
-
         self.perspective_client = discovery.build(
             "commentanalyzer",
             "v1alpha1",
@@ -46,6 +46,7 @@ class DebateEvaluator:
             static_discovery=False,
             developerKey=_CONFIG["google"]["GCP.API_KEY"],
         )
+        self.bert_score_client = BERTScorer(lang="kr")
 
     def _prepare_dataframe(self, messages: List[Dict[str, Any]]) -> pd.DataFrame:
         """메시지 리스트를 평가에 적합한 DataFrame으로 전처리합니다."""
@@ -86,7 +87,6 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
 - You are allowed to be biased in ways that reflect your persona naturally.
 - Your scoring should differ noticeably from a generic judge — your persona MUST influence which side you find more convincing and why.
 - In your description, explicitly mention how your background as "{persona}" shaped your judgment.
-
 """
         else:
             persona_instruction = ""
@@ -145,8 +145,8 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
         for i in range(len(turns)):
             target = turns[i]
             others = turns[:i] + turns[i + 1 :]
-            _, _, f1_scores = bert_score(
-                [target] * len(others), others, lang="ko", verbose=False
+            _, _, f1_scores = self.bert_score_client.score(
+                [target] * len(others), others, verbose=False
             )
             scores.append(float(f1_scores.mean()))
 
@@ -253,31 +253,21 @@ class PersonaDebateEvaluator:
     - 전체 결과 및 종합 통계 반환
     """
 
-    def __init__(self, persona_jsonl_path: str, num_agents: int = 10):
+    def __init__(self, persona_json_path: str, num_agents: int = 10):
         """
         Args:
             persona_jsonl_path (str): filtered_persona.jsonl 파일 경로.
             num_agents (int): 사용할 페르소나 에이전트 수 (기본 10).
         """
-        self.persona_jsonl_path = persona_jsonl_path
+        self.persona_json_path = persona_json_path
         self.num_agents = num_agents
         self.evaluator = DebateEvaluator()
 
     def _load_random_personas(self) -> List[str]:
         """JSONL 파일에서 num_agents개의 페르소나를 랜덤 샘플링합니다."""
         personas = []
-        with open(self.persona_jsonl_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    obj = json.loads(line)
-                    persona_str = obj.get("persona", "")
-                    if persona_str:
-                        personas.append(persona_str)
-                except json.JSONDecodeError:
-                    continue
+        with open(self.persona_json_path, "r", encoding="utf-8") as f:
+            personas = json.load(f)
 
         if len(personas) < self.num_agents:
             raise ValueError(
@@ -331,7 +321,6 @@ class PersonaDebateEvaluator:
             r"GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
             r"winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}"
         )
-        import re
 
         gpt_scores, gemini_scores = [], []
         coh_gpt_list, coh_gem_list = [], []
@@ -486,7 +475,7 @@ if __name__ == "__main__":
             debate_data = json.load(f)
 
         persona_evaluator = PersonaDebateEvaluator(
-            persona_jsonl_path="./filtered_persona.jsonl", num_agents=10
+            persona_json_path="./personas.json", num_agents=10
         )
 
         full_result = persona_evaluator.evaluate_with_personas(

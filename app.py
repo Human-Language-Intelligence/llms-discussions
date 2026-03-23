@@ -6,7 +6,7 @@ import flask
 import flask_socketio
 
 from source import config, content, manager, utils
-from source.eval import DebateEvaluator
+from source.eval import DebateEvaluator, PersonaDebateEvaluator
 
 TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])
 
@@ -14,7 +14,12 @@ app = flask.Flask(__name__)
 app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 room_manager = manager.RoomManager()
-evaluator = DebateEvaluator()
+evaluator = PersonaDebateEvaluator(
+    persona_jsonl_path="./persona/filtered_persona.jsonl",
+    num_agents=10
+)
+
+evaluation_store = {}
 
 room_manager.event_bus.subscribe(
     "pros-response",
@@ -176,9 +181,10 @@ def evaluate():
     try:
         room = room_manager.get_room(code)
         messages = room.messages
-        result = evaluator.evaluate(messages, topic)
-        flask.session["evaluation_result"] = result
-        return flask.jsonify(result), 200
+        result = evaluator.evaluate_with_personas(messages, topic)
+        evaluation_store[code] = result
+        flask.session["eval_room"] = code
+        return flask.jsonify({"ok": True}), 200
 
     except Exception as e:
         print(f"[Evaluation Error] {e}", file=sys.stderr)
@@ -187,7 +193,8 @@ def evaluate():
 
 @app.route("/result")
 def result():
-    result = flask.session.get("evaluation_result")
+    code = flask.session.get("eval_room")
+    result = evaluation_store.get(code)
     if not result:
         return flask.redirect(flask.url_for("home"))
 

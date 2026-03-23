@@ -13,7 +13,7 @@ app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 room_manager = manager.RoomManager()
 evaluator = PersonaDebateEvaluator(
-    persona_jsonl_path=config.CONFIG["default"]["EVAL.PERSONA"],
+    persona_json_path=config.CONFIG["default"]["EVAL.PERSONA"],
     num_agents=int(config.CONFIG["default"]["EVAL.SIZE"]),
 )
 

@@ -22,40 +22,6 @@ EvalResult = dict[str, Any]
 T = TypeVar("T")
 
 
-class _C:
-    GPT_MODEL = "gpt-5.4-mini"
-    PROS_ROLE = "pros"
-    CONS_ROLE = "cons"
-    GPT_NAME = "GPT"
-    GEMINI_NAME = "GEMINI"
-    DEFAULT_TOPIC = "NFT는 예술의 미래인가?"
-
-    JUDGE_SCORE_RE = re.compile(
-        r"GPT\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
-        r"GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
-        r"winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}",
-        re.IGNORECASE,
-    )
-
-
-class LLMCaller:
-    def __init__(self, client: openai.OpenAI, model: str = _C.GPT_MODEL) -> None:
-        self._client = client
-        self._model = model
-
-    def call(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float = 0.7,
-        fallback: str = "",
-    ) -> str:
-        res = self._client.responses.create(
-            model=self._model, input=messages, reasoning={"effort": "none"}
-        )
-
-        return res.output_text
-
-
 def loo_metric(
     turns: list[str],
     score_fn: Callable[[str, list[str]], float],
@@ -110,6 +76,38 @@ class AgentResult:
         }
 
 
+class _C:
+    GPT_MODEL = "gpt-5.4-mini"
+    PROS_ROLE = "pros"
+    CONS_ROLE = "cons"
+    GPT_NAME = "GPT"
+    GEMINI_NAME = "GEMINI"
+    DEFAULT_TOPIC = "NFT는 예술의 미래인가?"
+
+    JUDGE_SCORE_RE = re.compile(
+        r"GPT\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
+        r"GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
+        r"winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}",
+        re.IGNORECASE,
+    )
+
+
+class LLMCaller:
+    def __init__(self, client: openai.OpenAI, model: str = _C.GPT_MODEL) -> None:
+        self._client = client
+        self._model = model
+
+    def call(
+        self,
+        messages: list[dict[str, str]],
+    ) -> str:
+        res = self._client.responses.create(
+            model=self._model, input=messages, reasoning={"effort": "none"}
+        )
+
+        return res.output_text
+
+
 class DebateEvaluator:
     """
     두 AI 모델 간 토론 내용을 평가하는 클래스.
@@ -162,14 +160,14 @@ class DebateEvaluator:
             for i in range(0, len(df), 2)
         )
         persona_block = (
-            f"You are NOT a neutral academic judge. You are a real person with the following identity:\n"
-            f'"{persona}"\n\n'
-            f"You are watching this debate and forming a personal opinion based on WHO YOU ARE.\n"
-            f"- Draw on your specific professional knowledge, life experience, and personal values.\n"
-            f"- Some arguments will resonate with you more than others because of your background.\n"
-            f"- You are allowed to be biased in ways that reflect your persona naturally.\n"
-            f"- Your scoring should differ noticeably from a generic judge.\n"
-            f'- In your description, explicitly mention how your background as "{persona}" shaped your judgment.\n\n'
+            "You are NOT a neutral academic judge. You are a real person with the following identity:\n"
+            '"{persona}"\n\n'
+            "You are watching this debate and forming a personal opinion based on WHO YOU ARE.\n"
+            "- Draw on your specific professional knowledge, life experience, and personal values.\n"
+            "- Some arguments will resonate with you more than others because of your background.\n"
+            "- You are allowed to be biased in ways that reflect your persona naturally.\n"
+            "- Your scoring should differ noticeably from a generic judge.\n"
+            '- In your description, explicitly mention how your background as "{persona}" shaped your judgment.\n\n'
             if persona
             else ""
         )
@@ -177,16 +175,16 @@ class DebateEvaluator:
         return (
             f"{persona_block}"
             f'We had a debate and the topic was "{topic}". '
-            f"The two sides each provided arguments to prove their side and refute the opponent. "
-            f"You are judging this debate. Give a score from 1 to 10 to each side. "
-            f"Take into account: clarity of arguments, factuality and use of evidence, "
-            f"rebuttal and counterarguments, logical consistency, persuasiveness and impact, "
-            f"conciseness, coherence. Also choose the overall winner.\n"
-            f"Your answer MUST follow this exact format: "
+            "The two sides each provided arguments to prove their side and refute the opponent. "
+            "You are judging this debate. Give a score from 1 to 10 to each side. "
+            "Take into account: clarity of arguments, factuality and use of evidence, "
+            "rebuttal and counterarguments, logical consistency, persuasiveness and impact, "
+            "conciseness, coherence. Also choose the overall winner.\n"
+            "Your answer MUST follow this exact format: "
             f'"{_C.GPT_NAME}: [[score]], {_C.GEMINI_NAME}: [[score]], winner: [[name]]. [[description]]".\n\n'
             f"The script of the debate is as follows:\n{script}\n\n"
-            f"평가 설명은 **한국어**로 작성해주세요. "
-            f"당신의 페르소나가 평가에 어떤 영향을 미쳤는지 구체적으로 서술하세요."
+            "평가 설명은 **한국어**로 작성해주세요. "
+            "당신의 페르소나가 평가에 어떤 영향을 미쳤는지 구체적으로 서술하세요."
         )
 
     def _build_system_prompt(self, persona: Optional[str]) -> str:
@@ -211,13 +209,9 @@ class DebateEvaluator:
                 {"role": "system", "content": self._build_system_prompt(persona)},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.7,
-            fallback="Failed to get judgement from GPT-4o.",
         )
 
     def _coherence_score(self, turns: list[str]) -> float:
-        """② loo_metric으로 BERTScore 기반 일관성 점수를 계산합니다."""
-
         def _score_fn(target: str, others: list[str]) -> float:
             _, _, f1 = self._bert.score([target] * len(others), others, verbose=False)
             return float(f1.mean())
@@ -306,6 +300,7 @@ class PersonaDebateEvaluator:
     def _load_personas(self) -> list[dict]:
         with open(self._persona_path, "r", encoding="utf-8") as fh:
             all_personas: list[dict] = json.load(fh)
+            
         if len(all_personas) < self._num_agents:
             raise ValueError(
                 f"페르소나 수({len(all_personas)})가 "
@@ -365,9 +360,9 @@ class PersonaDebateEvaluator:
         topic: str = _C.DEFAULT_TOPIC,
     ) -> EvalResult:
         personas = self._load_personas()
-
         ev = self._evaluator
         df = ev._prepare_dataframe(messages)
+
         gpt_turns = df[df["role"] == _C.PROS_ROLE]["message"].tolist()
         gemini_turns = df[df["role"] == _C.CONS_ROLE]["message"].tolist()
 
@@ -385,7 +380,6 @@ class PersonaDebateEvaluator:
 
         logger.info("[병렬 실행] 번역 + LLM Judge 평가 시작 …")
         judge_results: dict[int, str] = {}
-
         with ThreadPoolExecutor(max_workers=self._num_agents + 1) as pool:
             judge_futures = {
                 pool.submit(
@@ -397,7 +391,6 @@ class PersonaDebateEvaluator:
                 idx, result = future.result()
                 judge_results[idx] = result
 
-        # 결과 조립
         agents = [
             AgentResult(
                 agent_index=idx,

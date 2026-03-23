@@ -19,13 +19,8 @@ class Gemini:
     def connect_session(self) -> None:
         self.client = genai.Client(
             vertexai=True,
-            # api_key=_CONFIG["google"]["GCP.API_KEY"],
             credentials=self.credential_file,
             project=self.project,
-            # location=_CONFIG["google"]["GCP.LOCATION"],
-            # http_options=genai.types.HttpOptions(
-            #     api_version="v1"
-            # )
         )
         self.create_chat()
 

@@ -8,10 +8,16 @@ class Room:
     def __init__(self, room_id, model_pros="gpt", model_cons="gemini", event_bus=None):
         self.room_id = room_id
         self.event_bus = event_bus
-        self.lock = threading.Lock()
         self.members = 0
         self.count = 0
         self.messages = []
+        self.results = {}
+
+        self.history_max = int(_CONFIG["default"]["HISTORY.SIZE"])
+        self.history_prompt = {
+            "pros": _CONFIG["default"]["HISTORY.POSITIVE"],
+            "cons": _CONFIG["default"]["HISTORY.NEGATIVE"]
+        }
         self.models = {
             "gpt": chatgpt.ChatGPT(
                 _CONFIG["openai"]["GPT.MODEL_NAME"],
@@ -23,6 +29,7 @@ class Room:
                 project=_CONFIG["google"]["GCP.PROJECT_ID"],
             ),
         }
+        self.lock = threading.Lock()
         self.threads = {
             "pros": worker.ModelWorker(
                 self,
@@ -42,8 +49,7 @@ class Room:
         self.threads["cons"].set_output_queue(self.threads["pros"].input_queue)
 
     def select_model(self, model, role):
-        prompt_key = "HISTORY.POSITIVE" if role == "pros" else "HISTORY.NEGATIVE"
-        prompt = _CONFIG["default"][prompt_key]
+        prompt = self.history_prompt.get(role)
         model_obj = self.models.get(model)
 
         model_obj.set_system_prompt(prompt)
@@ -56,7 +62,7 @@ class Room:
     def append_message(self, message):
         with self.lock:
             self.count += 1
-            if self.count >= 10:
+            if self.count >= self.history_max:
                 self.stop_threads()
             self.messages.append(message)
         if len(self.messages) > 100:

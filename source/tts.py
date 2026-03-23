@@ -38,13 +38,3 @@ class TTS:
         )
 
         return response.audio_content
-
-
-if __name__ == "__main__":
-    text = "안녕하세요. TTS test 입니다."
-
-    tts = TTS(0)
-    response = tts.request(text)
-
-    with open("output.opus", "wb") as out:
-        out.write(response)

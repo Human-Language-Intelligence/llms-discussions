@@ -8,17 +8,14 @@ import flask_socketio
 from source import config, content, manager, utils
 from source.eval import DebateEvaluator, PersonaDebateEvaluator
 
-TOPIC_POOL = json.loads(config.CONFIG["default"]["TOPIC"])
-
 app = flask.Flask(__name__)
 app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 socketio = flask_socketio.SocketIO(app)
 room_manager = manager.RoomManager()
 evaluator = PersonaDebateEvaluator(
-    persona_jsonl_path=config.CONFIG["eval"]["PERSONA"], num_agents=10
+    persona_jsonl_path=config.CONFIG["default"]["EVAL.PERSONA"],
+    num_agents=int(config.CONFIG["default"]["EVAL.SIZE"]),
 )
-
-evaluation_store = {}
 
 room_manager.event_bus.subscribe(
     "pros-response",
@@ -28,6 +25,9 @@ room_manager.event_bus.subscribe(
     "cons-response",
     lambda data: socketio.emit("cons-message", data.get("data"), room=data.get("room")),
 )
+
+with open(config.CONFIG["default"]["TOPIC"], "r", encoding="utf-8") as fp:
+    TOPIC_POOL = json.load(fp)
 
 
 @socketio.on("complete")
@@ -158,24 +158,26 @@ def evaluate():
     try:
         room = room_manager.get_room(code)
         messages = room.messages
-        result = evaluator.evaluate_with_personas(messages, topic)
-        evaluation_store[code] = result
-        flask.session["eval_room"] = code
+        room.results = evaluator.evaluate_with_personas(messages, topic)
+
         return flask.jsonify({"ok": True}), 200
 
     except Exception as e:
         print(f"[Evaluation Error] {e}", file=sys.stderr)
+
         return flask.jsonify({"error": str(e)}), 500
 
 
 @app.route("/result")
 def result():
-    code = flask.session.get("eval_room")
-    result = evaluation_store.get(code)
-    if not result:
+    code = flask.session.get("room")
+    room = room_manager.get_room(code)
+
+    results = room.results
+    if not results:
         return flask.redirect(flask.url_for("home"))
 
-    return flask.render_template("result.html", result=result)
+    return flask.render_template("result.html", result=results)
 
 
 @app.route("/", methods=["GET", "POST"])

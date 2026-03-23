@@ -23,6 +23,7 @@ class DebateEvaluator:
     3. Distinct-n을 이용한 다양성(Diversity) 지수 계산
     4. Perspective API를 이용한 유해성 분석
     """
+
     GPT_MODEL = "gpt-4o"
     PROS_ROLE = "pros"
     CONS_ROLE = "cons"
@@ -36,23 +37,21 @@ class DebateEvaluator:
         Args:
             api_keys (Dict[str, str]): 'openai'와 'google' API 키를 포함하는 딕셔너리.
         """
-        self.openai_client = openai.OpenAI(
-            api_key=_CONFIG["openai"]["GPT.API_KEY"]
-        )
+        self.openai_client = openai.OpenAI(api_key=_CONFIG["openai"]["GPT.API_KEY"])
 
         self.perspective_client = discovery.build(
             "commentanalyzer",
             "v1alpha1",
             discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
             static_discovery=False,
-            developerKey=_CONFIG["google"]["GCP.API_KEY"]
+            developerKey=_CONFIG["google"]["GCP.API_KEY"],
         )
 
     def _prepare_dataframe(self, messages: List[Dict[str, Any]]) -> pd.DataFrame:
         """메시지 리스트를 평가에 적합한 DataFrame으로 전처리합니다."""
         df = pd.DataFrame(messages)
         df = df[df["role"].isin([self.PROS_ROLE, self.CONS_ROLE])]
-        df["timestamp"] = pd.to_datetime(df["timestamp"], errors='coerce')
+        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
         df = df.sort_values("timestamp").reset_index(drop=True)
 
         # 짝수 개의 턴만 사용하도록 보장
@@ -61,10 +60,7 @@ class DebateEvaluator:
         return df
 
     def _generate_judge_prompt(
-        self,
-        df: pd.DataFrame,
-        topic: str,
-        persona: Optional[str] = None
+        self, df: pd.DataFrame, topic: str, persona: Optional[str] = None
     ) -> Optional[str]:
         """GPT-4o 심판을 위한 프롬프트를 생성합니다."""
         if len(df) < 2:
@@ -119,11 +115,11 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
         if persona:
             system_content = (
                 f'You are fully embodying this persona: "{persona}". '
-                f'You are NOT a neutral judge — you are this specific person, '
-                f'with their career, knowledge, biases, and life experiences. '
-                f'React to the debate arguments the way this person genuinely would. '
-                f'Let your professional background drive your scoring. '
-                f'Do not default to generic balanced evaluations — be authentically this persona.'
+                f"You are NOT a neutral judge — you are this specific person, "
+                f"with their career, knowledge, biases, and life experiences. "
+                f"React to the debate arguments the way this person genuinely would. "
+                f"Let your professional background drive your scoring. "
+                f"Do not default to generic balanced evaluations — be authentically this persona."
             )
 
         try:
@@ -131,9 +127,9 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
                 model=self.GPT_MODEL,
                 input=[
                     {"role": "system", "content": system_content},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
-                temperature=0.7
+                temperature=0.7,
             )
             return response.output_text
         except Exception as e:
@@ -148,9 +144,10 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
         scores = []
         for i in range(len(turns)):
             target = turns[i]
-            others = turns[:i] + turns[i+1:]
+            others = turns[:i] + turns[i + 1 :]
             _, _, f1_scores = bert_score(
-                [target] * len(others), others, lang="ko", verbose=False)
+                [target] * len(others), others, lang="ko", verbose=False
+            )
             scores.append(float(f1_scores.mean()))
 
         return float(np.mean(scores))
@@ -160,8 +157,7 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
         if len(turns) < 1:
             return 0.0
 
-        analyzer = CountVectorizer(
-            analyzer='word', ngram_range=(n, n)).build_analyzer()
+        analyzer = CountVectorizer(analyzer="word", ngram_range=(n, n)).build_analyzer()
         all_ngrams = [set(analyzer(t)) for t in turns]
 
         distinct_ratios = []
@@ -171,7 +167,8 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
                 continue
 
             other_ngrams_union = set().union(
-                *[all_ngrams[j] for j in range(len(all_ngrams)) if i != j])
+                *[all_ngrams[j] for j in range(len(all_ngrams)) if i != j]
+            )
             distinct_ngrams = current_ngrams - other_ngrams_union
             distinct_ratios.append(len(distinct_ngrams) / len(current_ngrams))
 
@@ -182,10 +179,14 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
 
         try:
             analyze_request = {
-                'comment': {'text': text},
-                'requestedAttributes': {'TOXICITY': {}}
+                "comment": {"text": text},
+                "requestedAttributes": {"TOXICITY": {}},
             }
-            return self.perspective_client.comments().analyze(body=analyze_request).execute()
+            return (
+                self.perspective_client.comments()
+                .analyze(body=analyze_request)
+                .execute()
+            )
         except Exception as e:
             print(f"Error calling Perspective API: {e}")
             return None
@@ -194,7 +195,7 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
         self,
         messages: List[Dict[str, Any]],
         topic: str = "NFT는 예술의 미래인가?",
-        persona: Optional[str] = None
+        persona: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         토론 메시지 전체에 대한 평가를 수행합니다.
@@ -213,7 +214,7 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
             return {
                 "judge_result": "No valid turns to evaluate.",
                 "coherence": {"gpt": 0.0, "gemini": 0.0},
-                "diversity": {"gpt": 0.0, "gemini": 0.0}
+                "diversity": {"gpt": 0.0, "gemini": 0.0},
             }
 
         gpt_turns = df[df["role"] == self.PROS_ROLE]["message"].tolist()
@@ -230,8 +231,14 @@ You are watching this debate and forming a personal opinion based on WHO YOU ARE
 
         return {
             "judge_result": judge_result,
-            "coherence": {"gpt": round(coherence_gpt, 4), "gemini": round(coherence_gemini, 4)},
-            "diversity": {"gpt": round(diversity_gpt, 4), "gemini": round(diversity_gemini, 4)}
+            "coherence": {
+                "gpt": round(coherence_gpt, 4),
+                "gemini": round(coherence_gemini, 4),
+            },
+            "diversity": {
+                "gpt": round(diversity_gpt, 4),
+                "gemini": round(diversity_gemini, 4),
+            },
         }
 
 
@@ -320,9 +327,9 @@ class PersonaDebateEvaluator:
                             avg_judge_score, score_distribution
         """
         header_re = (
-            r'GPT\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*'
-            r'GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*'
-            r'winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}'
+            r"GPT\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
+            r"GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
+            r"winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}"
         )
         import re
 
@@ -356,25 +363,32 @@ class PersonaDebateEvaluator:
 
         return {
             "judge_score": {
-                "gpt":    {"mean": safe_mean(gpt_scores),    "std": safe_std(gpt_scores)},
-                "gemini": {"mean": safe_mean(gemini_scores), "std": safe_std(gemini_scores)},
+                "gpt": {"mean": safe_mean(gpt_scores), "std": safe_std(gpt_scores)},
+                "gemini": {
+                    "mean": safe_mean(gemini_scores),
+                    "std": safe_std(gemini_scores),
+                },
             },
             "coherence": {
-                "gpt":    {"mean": safe_mean(coh_gpt_list),  "std": safe_std(coh_gpt_list)},
-                "gemini": {"mean": safe_mean(coh_gem_list),  "std": safe_std(coh_gem_list)},
+                "gpt": {"mean": safe_mean(coh_gpt_list), "std": safe_std(coh_gpt_list)},
+                "gemini": {
+                    "mean": safe_mean(coh_gem_list),
+                    "std": safe_std(coh_gem_list),
+                },
             },
             "diversity": {
-                "gpt":    {"mean": safe_mean(div_gpt_list),  "std": safe_std(div_gpt_list)},
-                "gemini": {"mean": safe_mean(div_gem_list),  "std": safe_std(div_gem_list)},
+                "gpt": {"mean": safe_mean(div_gpt_list), "std": safe_std(div_gpt_list)},
+                "gemini": {
+                    "mean": safe_mean(div_gem_list),
+                    "std": safe_std(div_gem_list),
+                },
             },
             "winner_tally": winner_tally,
             "total_agents": len(agent_results),
         }
 
     def evaluate_with_personas(
-        self,
-        messages: List[Dict[str, Any]],
-        topic: str = "NFT는 예술의 미래인가?"
+        self, messages: List[Dict[str, Any]], topic: str = "NFT는 예술의 미래인가?"
     ) -> Dict[str, Any]:
         """
         10개의 랜덤 페르소나 에이전트로 토론을 평가합니다.
@@ -404,13 +418,19 @@ class PersonaDebateEvaluator:
         gemini_turns = df[df["role"] == self.evaluator.CONS_ROLE]["message"].tolist()
 
         print("[공통 지표 계산 중] Coherence / Diversity...")
-        coherence_gpt    = self.evaluator._calculate_coherence_score(gpt_turns)
+        coherence_gpt = self.evaluator._calculate_coherence_score(gpt_turns)
         coherence_gemini = self.evaluator._calculate_coherence_score(gemini_turns)
-        diversity_gpt    = self.evaluator._calculate_diversity_index(gpt_turns)
+        diversity_gpt = self.evaluator._calculate_diversity_index(gpt_turns)
         diversity_gemini = self.evaluator._calculate_diversity_index(gemini_turns)
         shared_metrics = {
-            "coherence": {"gpt": round(coherence_gpt, 4), "gemini": round(coherence_gemini, 4)},
-            "diversity": {"gpt": round(diversity_gpt, 4), "gemini": round(diversity_gemini, 4)},
+            "coherence": {
+                "gpt": round(coherence_gpt, 4),
+                "gemini": round(coherence_gemini, 4),
+            },
+            "diversity": {
+                "gpt": round(diversity_gpt, 4),
+                "gemini": round(diversity_gemini, 4),
+            },
         }
 
         # LLM judge 호출만 병렬화 (API I/O bound → thread-safe)
@@ -459,21 +479,18 @@ class PersonaDebateEvaluator:
         }
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 페르소나 기반 평가 실행 예시
     try:
         with open("./debate-history-1754391739291.json", "r", encoding="utf-8") as f:
             debate_data = json.load(f)
 
         persona_evaluator = PersonaDebateEvaluator(
-            persona_jsonl_path="./filtered_persona.jsonl",
-            num_agents=10
+            persona_jsonl_path="./filtered_persona.jsonl", num_agents=10
         )
 
         full_result = persona_evaluator.evaluate_with_personas(
-            debate_data,
-            topic="AI는 인류에게 위협이 될 것인가?"
+            debate_data, topic="AI는 인류에게 위협이 될 것인가?"
         )
 
         print(json.dumps(full_result, ensure_ascii=False, indent=2))

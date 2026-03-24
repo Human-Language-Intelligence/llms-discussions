@@ -1,16 +1,44 @@
 import json
+import logging
 import random
 import sys
+from logging.handlers import RotatingFileHandler
 
 import flask
 import flask_socketio
 
-from source import config, content, manager, utils
-from source.eval import DebateEvaluator, PersonaDebateEvaluator
+from source import config, content, manager
+from source.eval import PersonaDebateEvaluator
 
 app = flask.Flask(__name__)
+socketio = flask_socketio.SocketIO(app, logger=True, engineio_logger=False)
 app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
-socketio = flask_socketio.SocketIO(app)
+
+console_handler = logging.StreamHandler()
+file_handler = RotatingFileHandler("app.log", maxBytes=1_000_000, backupCount=3)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+file_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.INFO)
+
+app.logger.handlers.clear()
+app.logger.setLevel(logging.INFO)
+app.logger.addHandler(file_handler)
+app.logger.addHandler(console_handler)
+app.logger.propagate = False
+
+for name in ("werkzeug", "engineio", "socketio"):
+    logger = logging.getLogger(name)
+    logger.handlers.clear()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    logger.propagate = False
+
+app.logger.info("=== Logging initialized ===")
+
 room_manager = manager.RoomManager()
 evaluator = PersonaDebateEvaluator(
     persona_json_path=config.CONFIG["default"]["EVAL.PERSONA"],
@@ -40,7 +68,7 @@ def on_tts(data):
     room = room_manager.get_room(code)
     room.set_event(role)
 
-    utils.log_event("Complete", role)
+    app.logger.info(f"{role} - Complete")
 
 
 @socketio.on("model")
@@ -71,7 +99,7 @@ def on_user(data):
     room.user_message(message_text)
     socketio.emit("message", data, room=code)
 
-    utils.log_event("Send", name, message_text)
+    app.logger.info(f"{name} - Send: {message_text}")
 
 
 @socketio.on("start")
@@ -79,6 +107,7 @@ def on_start(data):
     code = flask.session.get("room")
     name = flask.session.get("name", "user")
     topic = data.get("topic", "").strip()
+    message = f"토론 주제는 '{topic}' 입니다."
 
     if not (code and topic) or code not in room_manager.list_rooms():
         return
@@ -86,13 +115,13 @@ def on_start(data):
     data = content.MessageContent(
         name=name,
         role="system",
-        message=f"토론 주제는 '{topic}' 입니다.",
+        message=message,
         is_playing=True,
     ).to_dict()
 
     on_model(data, code)
 
-    utils.log_event("Send", name, data.get("message"))
+    app.logger.info(f"{name} - Send: {message}")
 
 
 @socketio.on("connect")
@@ -111,7 +140,7 @@ def on_connect():
 
     flask_socketio.join_room(code)
 
-    utils.log_event("Connect", name, f"User {name} connected to room {code}")
+    app.logger.info(f"{name} - Connect: User {name} connected to room {code}")
 
 
 @socketio.on("disconnect")
@@ -129,7 +158,7 @@ def on_disconnect():
 
     flask_socketio.leave_room(code)
 
-    utils.log_event("Disconnect", name, f"User {name} disconnected from room {code}")
+    app.logger.info(f"{name} - Disconnect: User {name} disconnected from room {code}")
 
 
 @app.route("/room")
@@ -155,13 +184,12 @@ def evaluate():
     if not code or not topic or code not in room_manager.list_rooms():
         return flask.jsonify({"error": "Invalid room or topic"}), 400
 
+    room = room_manager.get_room(code)
     try:
-        room = room_manager.get_room(code)
         messages = room.messages
         room.results = evaluator.evaluate_with_personas(messages, topic)
 
         return flask.jsonify({"ok": True}), 200
-
     except Exception as e:
         print(f"[Evaluation Error] {e}", file=sys.stderr)
 

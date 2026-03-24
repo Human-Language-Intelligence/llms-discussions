@@ -12,14 +12,3 @@ def get_random_time() -> float:
     value = random.betavariate(1, 3)
     # 값을 0.01과 0.7 사이의 범위로 스케일링
     return 0.01 + value * (0.35 - 0.01)
-
-
-def log_event(
-    event_type,
-    username,
-    additional_info=""
-) -> None:
-    # 이벤트를 로그에 기록
-    line = f"{get_utc_timestamp()} - {username} - {event_type}: {additional_info}\n"
-    with open("events.log", "a", encoding="utf-8") as log_file:
-        log_file.write(line)

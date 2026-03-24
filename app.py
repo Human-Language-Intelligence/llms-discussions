@@ -10,33 +10,34 @@ import flask_socketio
 from source import config, content, manager
 from source.eval import PersonaDebateEvaluator
 
-app = flask.Flask(__name__)
-socketio = flask_socketio.SocketIO(app, logger=True, engineio_logger=False)
-app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 
+logger = logging.getLogger()
 console_handler = logging.StreamHandler()
 file_handler = RotatingFileHandler("app.log", maxBytes=1_000_000, backupCount=3)
-formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+formatter = logging.Formatter("[%(levelname)s-%(asctime)s]\t%(name)s: %(message)s")
+
+app = flask.Flask(__name__)
+socketio = flask_socketio.SocketIO(app, logger=True, engineio_logger=False)
 
 file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
+
+console_handler.setFormatter(formatter)
 console_handler.setLevel(logging.INFO)
 
+logger.handlers.clear()
+logger.setLevel(logging.INFO)
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+logging.getLogger("werkzeug").propagate = True
+logging.getLogger("engineio").propagate = True
+logging.getLogger("socketio").propagate = True
+
 app.logger.handlers.clear()
-app.logger.setLevel(logging.INFO)
-app.logger.addHandler(file_handler)
-app.logger.addHandler(console_handler)
-app.logger.propagate = False
+app.logger.propagate = True
 
-for name in ("werkzeug", "engineio", "socketio"):
-    logger = logging.getLogger(name)
-    logger.handlers.clear()
-    logger.setLevel(logging.INFO)
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    logger.propagate = False
-
+app.secret_key = config.CONFIG["flask"]["SECRET_KEY"]
 app.logger.info("=== Logging initialized ===")
 
 room_manager = manager.RoomManager()

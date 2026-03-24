@@ -41,5 +41,5 @@ class TTS:
 
         return response.audio_content
 
-    def decode(self, audio: bytes, format="utf-8"):
+    def decode(self, audio: bytes, format: str = "utf-8") -> str:
         return base64.b64encode(audio).decode(format)

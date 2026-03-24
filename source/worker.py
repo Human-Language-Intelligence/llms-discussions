@@ -1,4 +1,3 @@
-import base64
 import queue
 import threading
 
@@ -26,19 +25,13 @@ class ModelWorker:
             message=message,
         ).to_dict()
 
-        try:
-            audio = self.tts.request(message)
-            audio_base64 = base64.b64encode(audio).decode("utf-8")
-            data["audio_base64"] = audio_base64
-            print(f"[{self.name}] 🎧 TTS 완료")
-        except Exception as e:
-            print(f"[{self.name}] TTS 오류:", e)
+        audio = self.tts.request(message)
+        data["audio_base64"] = self.tts.decode(audio)
 
         if self.room.event_bus:
-            self.room.event_bus.publish(f"{self.role}-response", {
-                "room": self.room.room_id,
-                "data": data
-            })
+            self.room.event_bus.publish(
+                f"{self.role}-response", {"room": self.room.room_id, "data": data}
+            )
         self.room.append_message(data)
 
     def run(self):
@@ -52,7 +45,9 @@ class ModelWorker:
             self.process_content(response)
             self.wait_event()
 
-            self.output_queue.put(response)
+            if self.output_queue:
+                self.output_queue.put(response)
+
             self.input_queue.task_done()
 
     def enqueue_input(self, user_input):
@@ -64,6 +59,7 @@ class ModelWorker:
 
     def stop(self):
         self.running = False
+        self.input_queue.put(None)
         self.thread.join()
 
     def wait_event(self):

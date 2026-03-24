@@ -1,3 +1,5 @@
+import base64
+
 from google.cloud import texttospeech
 from google.oauth2 import service_account
 
@@ -38,3 +40,6 @@ class TTS:
         )
 
         return response.audio_content
+
+    def decode(self, audio: bytes, format="utf-8"):
+        return base64.b64encode(audio).decode(format)

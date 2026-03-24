@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 Message = dict[str, Any]
 EvalResult = dict[str, Any]
-T = TypeVar("T")
 
 
 def loo_metric(
@@ -78,8 +77,6 @@ class AgentResult:
 
 class _C:
     GPT_MODEL = "gpt-5.4-mini"
-    PROS_ROLE = "pros"
-    CONS_ROLE = "cons"
     GPT_NAME = "GPT"
     GEMINI_NAME = "GEMINI"
     DEFAULT_TOPIC = "NFT는 예술의 미래인가?"
@@ -123,6 +120,7 @@ class DebateEvaluator:
         _openai_client = openai.OpenAI(api_key=_CONFIG["openai"]["GPT.API_KEY"])
 
         self._llm = LLMCaller(_openai_client)
+        self._bert = BERTScorer(lang="kr")
         self._perspective = discovery.build(
             serviceName="commentanalyzer",
             version="v1alpha1",
@@ -133,11 +131,10 @@ class DebateEvaluator:
             static_discovery=False,
             developerKey=_CONFIG["google"]["GCP.API_KEY"],
         )
-        self._bert = BERTScorer(lang="kr")
 
     def _prepare_dataframe(self, messages: list[Message]) -> pd.DataFrame:
         df = pd.DataFrame(messages)
-        df = df[df["role"].isin([_C.PROS_ROLE, _C.CONS_ROLE])].copy()
+        df = df[df["role"].isin(["pros", "cons"])].copy()
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
         df = df.sort_values("timestamp").reset_index(drop=True)
         if len(df) % 2 != 0:
@@ -267,8 +264,8 @@ class DebateEvaluator:
                 "diversity": {"gpt": 0.0, "gemini": 0.0},
             }
 
-        gpt_turns = df[df["role"] == _C.PROS_ROLE]["message"].tolist()
-        gemini_turns = df[df["role"] == _C.CONS_ROLE]["message"].tolist()
+        gpt_turns = df[df["role"] == "pros"]["message"].tolist()
+        gemini_turns = df[df["role"] == "cons"]["message"].tolist()
 
         prompt = self._build_judge_prompt(df, topic, persona=persona)
         result: EvalResult = {
@@ -300,7 +297,7 @@ class PersonaDebateEvaluator:
     def _load_personas(self) -> list[dict]:
         with open(self._persona_path, "r", encoding="utf-8") as fh:
             all_personas: list[dict] = json.load(fh)
-            
+
         if len(all_personas) < self._num_agents:
             raise ValueError(
                 f"페르소나 수({len(all_personas)})가 "
@@ -363,8 +360,8 @@ class PersonaDebateEvaluator:
         ev = self._evaluator
         df = ev._prepare_dataframe(messages)
 
-        gpt_turns = df[df["role"] == _C.PROS_ROLE]["message"].tolist()
-        gemini_turns = df[df["role"] == _C.CONS_ROLE]["message"].tolist()
+        gpt_turns = df[df["role"] == "pros"]["message"].tolist()
+        gemini_turns = df[df["role"] == "cons"]["message"].tolist()
 
         logger.info("[공통 지표 계산 중] Coherence / Diversity …")
         shared: EvalResult = {

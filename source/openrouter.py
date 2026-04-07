@@ -1,16 +1,46 @@
 from openai import OpenAI
 
 
-class OpenRouter:
-    def __init__(self, model="openai/gpt-oss-120b:free", key=None):
+class LLMCaller:
+    def __init__(self, model="openai/gpt-oss-120b:free", base="openrouter", key=""):
+        self.model = model
+        self.client = None
+        self.bases = {
+            "openrouter": {
+                "url": "https://openrouter.ai/api/v1",
+                "body": {
+                    "provider": {
+                        "sort": {
+                            "by": "price",
+                            "partition": "none",
+                        },
+                        "order": ["sambanova"],
+                    }
+                }
+            },
+            "vllm": {
+                "url": "http://localhost:8000/v1",
+                "body": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": False
+                    }
+                }
+            }
+        }
+        self.base = self.bases.get(base)
+
+        self.connect_session(key)
+
+    def connect_session(self, key) -> None:
         self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
+            base_url=self.base.get("url"),
             api_key=key,
         )
-        self.model = model
 
     def get_response(self, text="", messages=[]):
-        message = [{"role": "user", "content": text}] if text else messages
+        message = messages if messages else [{"role": "user", "content": text}]
+        body = self.base.get("body")
+
         completion = self.client.chat.completions.create(
             # extra_headers={
             #     "HTTP-Referer": "<YOUR_SITE_URL>",  # Optional. Site URL for rankings on openrouter.ai.
@@ -18,15 +48,7 @@ class OpenRouter:
             # },
             model=self.model,
             messages=message,
-            extra_body={
-                "provider": {
-                    "sort": {
-                        "by": "price",
-                        "partition": "none",
-                    },
-                    "order": ["sambanova"],
-                }
-            },
+            extra_body=body,
         )
 
         return completion.choices[0].message.content

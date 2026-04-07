@@ -14,7 +14,7 @@ from googleapiclient import discovery
 from sklearn.feature_extraction.text import CountVectorizer
 
 from source.config import CONFIG as _CONFIG
-from source.openrouter import OpenRouter
+from source.openrouter import LLMCaller
 
 logger = logging.getLogger(__name__)
 
@@ -90,20 +90,6 @@ class _C:
     )
 
 
-class LLMCaller:
-    def __init__(self, model: str = _C.GPT_MODEL) -> None:
-        self._client = OpenRouter(key=_CONFIG["openrouter"]["OR.API_KEY"])
-        self._model = model
-
-    def call(
-        self,
-        messages: list[dict[str, str]],
-    ) -> str:
-        response = self._client.get_response(messages=messages)
-
-        return response
-
-
 class DebateEvaluator:
     """
     두 AI 모델 간 토론 내용을 평가하는 클래스.
@@ -116,7 +102,8 @@ class DebateEvaluator:
     """
 
     def __init__(self) -> None:
-        self._llm = LLMCaller()
+        self._llm = LLMCaller(key=_CONFIG["openrouter"]["OR.API_KEY"])
+        # self._llm = LLMCaller(model="mlx-community/K-EXAONE-236B-A23B-8bit", base="vllm")
         self._bert = BERTScorer(lang="kr")
         self._perspective = discovery.build(
             serviceName="commentanalyzer",
@@ -198,7 +185,7 @@ class DebateEvaluator:
         if not prompt:
             return "Not enough valid debate turns to evaluate."
 
-        return self._llm.call(
+        return self._llm.get_response(
             messages=[
                 {"role": "system", "content": self._build_system_prompt(persona)},
                 {"role": "user", "content": prompt},

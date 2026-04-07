@@ -21,6 +21,7 @@ class Gemini:
             vertexai=True,
             credentials=self.credential_file,
             project=self.project,
+            location="global"
         )
         self.create_chat()
 
@@ -29,10 +30,10 @@ class Gemini:
             model=self.model_name,
             config=genai.types.GenerateContentConfig(
                 system_instruction=self.system_prompt,
-                thinking_config=genai.types.ThinkingConfig(
+                # thinking_config=genai.types.ThinkingConfig(
                     # thinking_budget=-1,
-                    thinking_level="low"
-                ),
+                    # thinking_level="low"
+                # ),
                 safety_settings=[
                     genai.types.SafetySetting(
                         category=genai.types.HarmCategory.HARM_CATEGORY_UNSPECIFIED,

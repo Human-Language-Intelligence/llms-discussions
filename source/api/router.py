@@ -1,7 +1,7 @@
 from openai import OpenAI
 
 
-class LLMCaller:
+class LLMRouter:
     def __init__(self, model="openai/gpt-oss-120b:free", base="openrouter", key=""):
         self.model = model
         self.client = None
@@ -11,7 +11,7 @@ class LLMCaller:
                 "body": {
                     "provider": {
                         "sort": {
-                            "by": "price",
+                            "by": "latency",
                             "partition": "none",
                         },
                         "order": ["sambanova"],

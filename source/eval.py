@@ -7,14 +7,13 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, TypeVar
 
 import numpy as np
-import openai
 import pandas as pd
 from bert_score.scorer import BERTScorer
 from googleapiclient import discovery
 from sklearn.feature_extraction.text import CountVectorizer
 
+from source.api.router import LLMRouter
 from source.config import CONFIG as _CONFIG
-from source.openrouter import LLMCaller
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,6 @@ class AgentResult:
 
 
 class _C:
-    GPT_MODEL = "gpt-5.4-mini"
     GPT_NAME = "GPT"
     GEMINI_NAME = "GEMINI"
     DEFAULT_TOPIC = "NFT는 예술의 미래인가?"
@@ -95,14 +93,17 @@ class DebateEvaluator:
     두 AI 모델 간 토론 내용을 평가하는 클래스.
 
     평가 항목:
-      - GPT-4o 심판 평가 (점수 1~10 + 승자 + 설명)
+      - 심판 평가 (점수 1~10 + 승자 + 설명)
       - BERTScore 기반 일관성(Coherence)
       - Distinct-n 기반 다양성(Diversity)
       - Perspective API 기반 유해성(Toxicity)
     """
 
     def __init__(self) -> None:
-        self._llm = LLMCaller(key=_CONFIG["openrouter"]["OR.API_KEY"])
+        self._llm = LLMRouter(
+            model="x-ai/grok-4.1-fast",
+            key=_CONFIG["openrouter"]["OR.API_KEY"]
+        )
         # self._llm = LLMCaller(model="mlx-community/K-EXAONE-236B-A23B-8bit", base="vllm")
         self._bert = BERTScorer(lang="kr")
         self._perspective = discovery.build(

@@ -1,6 +1,7 @@
 import threading
 
-from source import chatgpt, gemini, tts, worker
+from source import worker
+from source.api import gemini, gpt, tts
 from source.config import CONFIG as _CONFIG
 
 
@@ -19,7 +20,7 @@ class Room:
             "cons": _CONFIG["default"]["HISTORY.NEGATIVE"]
         }
         self.models = {
-            "gpt": chatgpt.ChatGPT(
+            "gpt": gpt.ChatGPT(
                 _CONFIG["openai"]["GPT.MODEL_NAME"],
                 key=_CONFIG["openai"]["GPT.API_KEY"],
             ),

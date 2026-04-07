@@ -14,6 +14,7 @@ from googleapiclient import discovery
 from sklearn.feature_extraction.text import CountVectorizer
 
 from source.config import CONFIG as _CONFIG
+from source.openrouter import OpenRouter
 
 logger = logging.getLogger(__name__)
 
@@ -90,19 +91,17 @@ class _C:
 
 
 class LLMCaller:
-    def __init__(self, client: openai.OpenAI, model: str = _C.GPT_MODEL) -> None:
-        self._client = client
+    def __init__(self, model: str = _C.GPT_MODEL) -> None:
+        self._client = OpenRouter(key=_CONFIG["openrouter"]["OR.API_KEY"])
         self._model = model
 
     def call(
         self,
         messages: list[dict[str, str]],
     ) -> str:
-        res = self._client.responses.create(
-            model=self._model, input=messages, reasoning={"effort": "none"}
-        )
+        response = self._client.get_response(messages=messages)
 
-        return res.output_text
+        return response
 
 
 class DebateEvaluator:
@@ -117,9 +116,7 @@ class DebateEvaluator:
     """
 
     def __init__(self) -> None:
-        _openai_client = openai.OpenAI(api_key=_CONFIG["openai"]["GPT.API_KEY"])
-
-        self._llm = LLMCaller(_openai_client)
+        self._llm = LLMCaller()
         self._bert = BERTScorer(lang="kr")
         self._perspective = discovery.build(
             serviceName="commentanalyzer",

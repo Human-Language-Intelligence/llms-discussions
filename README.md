@@ -25,6 +25,9 @@ EVAL.SIZE = 10
 [flask]
 SECRET_KEY = @@@
 
+[openrouter]
+OR.API_KEY = @@@
+
 [openai]
 GPT.API_KEY = @@@
 GPT.MODEL_NAME = gpt-5.4-nano

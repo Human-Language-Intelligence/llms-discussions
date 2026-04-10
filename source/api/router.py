@@ -15,17 +15,14 @@ class LLMRouter:
                             "partition": "none",
                         },
                         "order": ["sambanova"],
-                    }
-                }
+                    },
+                    "reasoning": {"enabled": False},
+                },
             },
             "vllm": {
                 "url": "http://localhost:8000/v1",
-                "body": {
-                    "chat_template_kwargs": {
-                        "enable_thinking": False
-                    }
-                }
-            }
+                "body": {"chat_template_kwargs": {"enable_thinking": False}},
+            },
         }
         self.base = self.bases.get(base)
 
@@ -37,18 +34,18 @@ class LLMRouter:
             api_key=key,
         )
 
-    def get_response(self, text="", messages=[]):
-        message = messages if messages else [{"role": "user", "content": text}]
+    def get_response(self, text="", messages=None):
+        message = messages if messages is not None else [{"role": "user", "content": text}]
         body = self.base.get("body")
 
         completion = self.client.chat.completions.create(
+            model=self.model,
+            messages=message,
             # extra_headers={
             #     "HTTP-Referer": "<YOUR_SITE_URL>",  # Optional. Site URL for rankings on openrouter.ai.
             #     "X-OpenRouter-Title": "<YOUR_SITE_NAME>",  # Optional. Site title for rankings on openrouter.ai.
             # },
-            model=self.model,
-            messages=message,
-            extra_body=body,
+            extra_body=body
         )
 
         return completion.choices[0].message.content

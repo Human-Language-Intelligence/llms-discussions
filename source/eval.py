@@ -102,6 +102,7 @@ class DebateEvaluator:
     def __init__(self) -> None:
         self._llm = LLMRouter(
             model="x-ai/grok-4.1-fast",
+            # model="qwen/qwen3.5-flash-02-23",
             key=_CONFIG["openrouter"]["OR.API_KEY"]
         )
         # self._llm = LLMCaller(model="mlx-community/K-EXAONE-236B-A23B-8bit", base="vllm")

@@ -27,6 +27,7 @@ SECRET_KEY = @@@
 
 [openrouter]
 OR.API_KEY = @@@
+OR.MODEL_NAME = x-ai/grok-4.1-fast
 
 [openai]
 GPT.API_KEY = @@@

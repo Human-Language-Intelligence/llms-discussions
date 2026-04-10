@@ -2,7 +2,12 @@ from openai import OpenAI
 
 
 class LLMRouter:
-    def __init__(self, model="openai/gpt-oss-120b:free", base="openrouter", key=""):
+    def __init__(
+        self,
+        model: str = "openai/gpt-oss-120b:free",
+        base: str = "openrouter",
+        key: str = "",
+    ) -> None:
         self.model = model
         self.client = None
         self.bases = {
@@ -28,14 +33,14 @@ class LLMRouter:
 
         self.connect_session(key)
 
-    def connect_session(self, key) -> None:
+    def connect_session(self, key: str) -> None:
         self.client = OpenAI(
             base_url=self.base.get("url"),
             api_key=key,
         )
 
-    def get_response(self, text="", messages=None):
-        message = messages if messages is not None else [{"role": "user", "content": text}]
+    def get_response(self, text: str = "", messages: list = []) -> str:
+        message = messages if messages else [{"role": "user", "content": text}]
         body = self.base.get("body")
 
         completion = self.client.chat.completions.create(
@@ -45,7 +50,7 @@ class LLMRouter:
             #     "HTTP-Referer": "<YOUR_SITE_URL>",  # Optional. Site URL for rankings on openrouter.ai.
             #     "X-OpenRouter-Title": "<YOUR_SITE_NAME>",  # Optional. Site title for rankings on openrouter.ai.
             # },
-            extra_body=body
+            extra_body=body,
         )
 
         return completion.choices[0].message.content

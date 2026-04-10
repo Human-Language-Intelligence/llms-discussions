@@ -79,10 +79,38 @@ class _C:
     GPT_NAME = "GPT"
     GEMINI_NAME = "GEMINI"
     DEFAULT_TOPIC = "NFT는 예술의 미래인가?"
+    JUDGE_RULES = (
+        "Evaluation rules:\n"
+        "- Score each side from 1 to 10.\n"
+        "- Consider:\n"
+        "\t- clarity of arguments\n"
+        "\t- factuality and use of evidence\n"
+        "\t- rebuttal and counterarguments\n"
+        "\t- logical consistency\n"
+        "\t- persuasiveness and impact\n"
+        "\t- conciseness\n"
+        "\t- coherence\n\n"
+
+        "Output format (STRICT):\n"
+        f'"{GPT_NAME}: [[score]], {GEMINI_NAME}: [[score]], winner: [[name]]. [[description]]"\n\n'
+
+        "Language rule:\n"
+        "- The explanation MUST be written in Korean.\n"
+    )
+    PERSONA_RULES = (
+        "Behavior rules:\n"
+        "- Evaluate arguments based on quality, from the persona's perspective.\n"
+        "- Let the persona's biases influence your judgment, but keep it reasonable.\n"
+        "- Do not default to generic balanced evaluations.\n"
+        "- Do not invent unsupported traits.\n"
+        "- Explain how the persona influenced your judgment.\n"
+    )
 
     JUDGE_SCORE_RE = re.compile(
-        r"GPT\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
-        r"GEMINI\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
+        f"{GPT_NAME}"
+        r"\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
+        f"{GEMINI_NAME}"
+        r"\s*:\s*\[{0,2}(\d+(?:\.\d+)?)\]{0,2}\s*[,;]?\s*"
         r"winner\s*:\s*\[{0,2}([\w가-힣]+)\]{0,2}",
         re.IGNORECASE,
     )
@@ -100,12 +128,16 @@ class DebateEvaluator:
     """
 
     def __init__(self) -> None:
+        self._system_prompt = None
+
         self._llm = LLMRouter(
-            model="x-ai/grok-4.1-fast",
-            # model="qwen/qwen3.5-flash-02-23",
+            model=_CONFIG["openrouter"]["OR.MODEL_NAME"],
             key=_CONFIG["openrouter"]["OR.API_KEY"]
         )
-        # self._llm = LLMCaller(model="mlx-community/K-EXAONE-236B-A23B-8bit", base="vllm")
+        # self._llm = LLMRouter(
+        #     model="mlx-community/K-EXAONE-236B-A23B-8bit",
+        #     base="vllm"
+        # )
         self._bert = BERTScorer(lang="kr")
         self._perspective = discovery.build(
             serviceName="commentanalyzer",
@@ -114,8 +146,8 @@ class DebateEvaluator:
                 "https://commentanalyzer.googleapis.com"
                 "/$discovery/rest?version=v1alpha1"
             ),
-            static_discovery=False,
             developerKey=_CONFIG["google"]["GCP.API_KEY"],
+            static_discovery=False,
         )
 
     def _prepare_dataframe(self, messages: list[Message]) -> pd.DataFrame:
@@ -128,69 +160,52 @@ class DebateEvaluator:
 
         return df
 
+    def _build_system_prompt(self, persona: Optional[str]):
+        prompt = (
+            "You are a debate judge whose evaluations are influenced by a persona.\n\n"
+            f"{_C.PERSONA_RULES}\n"
+            f'Persona: \n"{persona}"\n\n'
+            if persona
+            else "You are a debate judge."
+        )
+
+        self._system_prompt = f"{prompt}\n\n{_C.JUDGE_RULES}"
+
     def _build_judge_prompt(
         self,
         df: pd.DataFrame,
         topic: str,
-        persona: Optional[str] = None,
-    ) -> Optional[str]:
+    ) -> str:
         if len(df) < 2:
-            return None
+            return ""
 
         script = " ".join(
             f'{_C.GPT_NAME}: "{df.iloc[i]["message"]}". '
             f'{_C.GEMINI_NAME}: "{df.iloc[i + 1]["message"]}"'
             for i in range(0, len(df), 2)
         )
-        persona_block = (
-            "You are NOT a neutral academic judge. You are a real person with the following identity:\n"
-            '"{persona}"\n\n'
-            "You are watching this debate and forming a personal opinion based on WHO YOU ARE.\n"
-            "- Draw on your specific professional knowledge, life experience, and personal values.\n"
-            "- Some arguments will resonate with you more than others because of your background.\n"
-            "- You are allowed to be biased in ways that reflect your persona naturally.\n"
-            "- Your scoring should differ noticeably from a generic judge.\n"
-            '- In your description, explicitly mention how your background as "{persona}" shaped your judgment.\n\n'
-            if persona
-            else ""
-        )
 
         return (
-            f"{persona_block}"
-            f'We had a debate and the topic was "{topic}". '
-            "The two sides each provided arguments to prove their side and refute the opponent. "
-            "You are judging this debate. Give a score from 1 to 10 to each side. "
-            "Take into account: clarity of arguments, factuality and use of evidence, "
-            "rebuttal and counterarguments, logical consistency, persuasiveness and impact, "
-            "conciseness, coherence. Also choose the overall winner.\n"
-            "Your answer MUST follow this exact format: "
-            f'"{_C.GPT_NAME}: [[score]], {_C.GEMINI_NAME}: [[score]], winner: [[name]]. [[description]]".\n\n'
-            f"The script of the debate is as follows:\n{script}\n\n"
-            "평가 설명은 **한국어**로 작성해주세요. "
-            "당신의 페르소나가 평가에 어떤 영향을 미쳤는지 구체적으로 서술하세요."
+            f'Topic: "{topic}"\n\n'
+            f'Debate script: "{script}"\n\n'
+
+            "Explicitly describe how your background influenced your judgment."
         )
 
-    def _build_system_prompt(self, persona: Optional[str]) -> str:
-        if not persona:
-            return "You are a debate judge."
-
-        return (
-            f'You are fully embodying this persona: "{persona}". '
-            "You are NOT a neutral judge — you are this specific person, "
-            "with their career, knowledge, biases, and life experiences. "
-            "React to the debate arguments the way this person genuinely would. "
-            "Let your professional background drive your scoring. "
-            "Do not default to generic balanced evaluations — be authentically this persona."
-        )
-
-    def _call_judge(self, prompt: Optional[str], persona: Optional[str] = None) -> str:
+    def _call_judge(self, prompt: Optional[str]) -> str:
         if not prompt:
             return "Not enough valid debate turns to evaluate."
 
         return self._llm.get_response(
             messages=[
-                {"role": "system", "content": self._build_system_prompt(persona)},
-                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": self._system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
             ],
         )
 
@@ -253,9 +268,10 @@ class DebateEvaluator:
         gpt_turns = df[df["role"] == "pros"]["message"].tolist()
         gemini_turns = df[df["role"] == "cons"]["message"].tolist()
 
-        prompt = self._build_judge_prompt(df, topic, persona=persona)
+        self._build_system_prompt(persona)
+        prompt = self._build_judge_prompt(df, topic)
         result: EvalResult = {
-            "judge_result": self._call_judge(prompt, persona=persona),
+            "judge_result": self._call_judge(prompt),
             "coherence": {
                 "gpt": round(self._coherence_score(gpt_turns), 4),
                 "gemini": round(self._coherence_score(gemini_turns), 4),
@@ -301,8 +317,9 @@ class PersonaDebateEvaluator:
         topic: str,
     ) -> tuple[int, str]:
         logger.info("[%d/%d] 평가 중: %.60s …", idx, self._num_agents, persona)
-        prompt = self._evaluator._build_judge_prompt(df, topic, persona=persona)
-        result = self._evaluator._call_judge(prompt, persona=persona)
+        self._evaluator._build_system_prompt(persona)
+        prompt = self._evaluator._build_judge_prompt(df, topic)
+        result = self._evaluator._call_judge(prompt)
         logger.info("[%d/%d] 완료", idx, self._num_agents)
 
         return idx, result
